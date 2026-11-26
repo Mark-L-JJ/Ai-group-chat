@@ -1,0 +1,40 @@
+# 每次把代码推到 GitHub，就用 GitHub 的云端 Windows 电脑自动打包 App，
+# 打好的安装包会出现在仓库的 Releases 页面里。
+name: Build Windows App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # 也可以在 Actions 页面手动点按钮重新打包
+
+permissions:
+  contents: write      # 允许把安装包发布到 Releases
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Tauri CLI
+        run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "AI 群聊 v__VERSION__"
+          releaseBody: "下载下面的 *-setup.exe 安装。第一次运行如果 Windows 提示“未知发布者”，点“更多信息 → 仍要运行”。"
+          releaseDraft: false
+          prerelease: false
