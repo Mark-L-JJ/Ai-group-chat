@@ -158,10 +158,14 @@ input, textarea, select { font: inherit; color: var(--text); }
 #new-pill { position: absolute; left: 50%; transform: translateX(-50%); bottom: 110px; display: none; background: var(--accent); color: var(--accent-text); border: none; border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 600; z-index: 5; box-shadow: var(--shadow); }
 
 /* ---------- 沙盘 ---------- */
-#sandbox { flex: 1; position: relative; overflow: hidden; }
-.ring { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px solid var(--line); pointer-events: none; }
+#sandbox { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.sb-field { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+.sb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 20px; border-top: 1px solid var(--line); flex-shrink: 0; }
+.sb-guide { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 300px; }
+.sb-guide b { color: var(--text-2); font-weight: 600; }
+.ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px solid var(--line); pointer-events: none; }
 .ring.r3 { border-style: dashed; }
-.core { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: 240px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 240px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .core .label { font-size: 11px; letter-spacing: 2px; color: var(--muted); }
 .core .q { font-size: 18px; font-weight: 700; line-height: 1.45; }
 .core .sun { width: 8px; height: 8px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 6px color-mix(in srgb, var(--text) 8%, transparent), 0 0 30px color-mix(in srgb, var(--text) 50%, transparent); }
@@ -172,7 +176,7 @@ input, textarea, select { font: inherit; color: var(--text); }
 }
 .node:hover, .node:focus-visible { z-index: 3; border-color: var(--c); animation-play-state: paused; }   /* 鼠标放上去就停下，方便看和点 */
 .node.inner { box-shadow: 0 0 18px color-mix(in srgb, var(--c) calc(var(--glow) * 40%), transparent); font-size: 15px; }
-.node.outer { width: 170px; font-size: 12px; opacity: .35; background: transparent; border-color: var(--line-2); }
+.node.outer { width: 170px; font-size: 12px; opacity: .55; background: transparent; border-color: var(--line-2); }
 .node.harsh { background: var(--harsh-bg); border-color: var(--harsh-line); }
 .node .nh { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin-bottom: 2px; }
 .node .nh b { color: var(--c); }
@@ -181,10 +185,10 @@ input, textarea, select { font: inherit; color: var(--text); }
 .node .nh .st { color: var(--star); }
 @keyframes drift { from { translate: 0 -3px; } to { translate: 0 3px; } }   /* 只用 translate，显卡直接挪，不用重新排版 */
 @media (prefers-reduced-motion: reduce) { .node { animation: none; } }
-.legend { position: absolute; left: 22px; bottom: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-.legend div { display: flex; align-items: center; gap: 8px; }
-.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.sandbox-actions { position: absolute; right: 22px; bottom: 18px; display: flex; gap: 8px; }
+.legend { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); min-width: 0; }
+.legend div { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.sandbox-actions { display: flex; gap: 8px; margin-left: auto; }
 
 /* ---------- 输入区 ---------- */
 #composer-wrap { padding: 8px 24px 18px; flex-shrink: 0; }
@@ -308,6 +312,8 @@ input, textarea, select { font: inherit; color: var(--text); }
   #board, #panel { width: 100vw; }
   .node { width: 150px; font-size: 12px; }
   .legend { display: none; }
+  .core { width: 180px; }
+  .core .q { font-size: 15px; }
 }
 </style>
 </head>
@@ -1024,7 +1030,7 @@ function sandboxPoints(g = current) {
     const repliers = new Set();
     for (let j = p.idx + 1; j < msgs.length && j < p.idx + 12; j++) {
       const n = msgs[j];
-      if (n.sender === p.sender || n.sender === "system" || n.error) continue;
+      if (n.sender === p.sender || n.sender === "system" || n.sender === "user" || n.error) continue;
       if (p.ids.includes(n.replyTo) || (n.text || "").includes("@" + name)) repliers.add(n.sender);
       else if (n.sender !== "user" && p.text.includes("@" + senderName(n.sender, g))) repliers.add(n.sender);
     }
@@ -1033,11 +1039,14 @@ function sandboxPoints(g = current) {
   const harshIds = new Set();
   (g.insights?.groups || []).filter(x => x.kind === "harsh").forEach(x => x.items.forEach(it => harshIds.add(it.id)));
   points.forEach(p => p.harsh = p.ids.some(id => harshIds.has(id)));
-  return points.sort((a, b) => b.score - a.score || b.idx - a.idx).slice(0, 12);
+  return points.sort((a, b) => b.score - a.score || b.idx - a.idx);
 }
 
 let sandboxTimer = null;
 function scheduleSandbox() { clearTimeout(sandboxTimer); sandboxTimer = setTimeout(() => view === "sandbox" && renderSandbox(), 400); }
+// 每一圈最多放几张、内圈每个成员最多占几张（防止"话多的人占满中心"，也防止卡片叠成一团）
+const RING_CAP = [4, 6, 5];
+const INNER_PER_MEMBER = 1, MIDDLE_PER_MEMBER = 2;
 function renderSandbox() {
   const box = $("sandbox");
   const pts = sandboxPoints();
@@ -1047,33 +1056,104 @@ function renderSandbox() {
     .filter(m => m.sender === "user" && m.text).map(m => m.text.replace(/@\S+\s?/g, "").trim());
   const longest = recentQs.sort((a, b) => b.length - a.length)[0];
   const q = current.insights?.question || (longest ? longest.slice(0, 40) : current.name);
-  let html = `<div class="ring" style="width:280px;height:280px"></div><div class="ring" style="width:560px;height:560px"></div>
-    <div class="ring r3" style="width:880px;height:880px"></div>
-    <div class="core"><span class="label">问题核心</span><div class="q">${esc(q || "还没有问题")}</div><span class="sun"></span></div>`;
-  if (!pts.length) {
-    html += `<div class="legend"><div>大家聊起来以后，观点会出现在这里</div></div>`;
+
+  // 分圈：内圈 = 2 人以上接话（每个成员最多 1 张），中圈 = 1 人接话，外圈 = 没人接
+  const inner = [], middle = [], outer = [], perMember = {};
+  for (const p of pts) {
+    if (p.score >= 2 && inner.length < RING_CAP[0] && (perMember[p.sender] || 0) < INNER_PER_MEMBER) {
+      inner.push(p); perMember[p.sender] = (perMember[p.sender] || 0) + 1;
+    } else if (p.score >= 1) middle.push(p);
+    else outer.push(p);
   }
-  // 按接话人数分三圈；同一圈里均匀分布角度，避免叠在一起
-  const rings = [pts.filter(p => p.score >= 2), pts.filter(p => p.score === 1), pts.filter(p => p.score === 0)];
-  const radius = [[22, 24], [33, 31], [42, 36]];   // 横向 %，纵向 %
-  rings.forEach((list, r) => list.forEach((p, k) => {
+  middle.sort((a, b) => b.score - a.score || b.idx - a.idx);
+  // 中圈每个成员最多 2 张，多出来的挪到外圈
+  const midCount = {}, keptMid = [];
+  for (const p of middle) {
+    if (keptMid.length < RING_CAP[1] && (midCount[p.sender] || 0) < MIDDLE_PER_MEMBER) { keptMid.push(p); midCount[p.sender] = (midCount[p.sender] || 0) + 1; }
+    else outer.push(p);
+  }
+  middle.length = 0; middle.push(...keptMid);
+  // 按沙盘的大小决定最多放几张卡：地方小就少放，先砍外圈，再砍中圈
+  const fw = box.clientWidth || 900, fh = (box.clientHeight || 600) - 60;
+  let room = Math.max(3, Math.floor((fw * fh) / (230 * 100 * 2.4))) - inner.length;
+  middle.splice(Math.max(0, Math.min(middle.length, room)));
+  room -= middle.length;
+  outer.sort((a, b) => b.idx - a.idx);
+  let shownOuter = outer.slice(0, Math.max(0, Math.min(RING_CAP[2], room)));
+  if (!inner.length && !middle.length && shownOuter.length) { middle.push(...shownOuter); shownOuter = []; }   // 还没人互相接话：先正常显示
+  const hidden = pts.length - inner.length - middle.length - shownOuter.length;   // 没放进沙盘的
+  const noReplies = pts.length && !pts.some(p => p.score > 0);
+
+  let field = `<div class="ring" style="width:280px;height:280px"></div><div class="ring" style="width:560px;height:560px"></div>
+    <div class="ring r3" style="width:880px;height:880px"></div>
+    <div class="core"><span class="label">问题核心</span><div class="q">${esc(q || "还没有问题")}</div><span class="sun"></span>`;
+  if (pts.length < 3) {
+    field += `<div class="sb-guide">${pts.length ? "观点还不多，" : ""}沙盘会把<b>最近 3 轮</b>里大家的观点摆在这里。<br>
+      先回到对话多聊几轮，被越多成员接话的观点会越靠近中心。</div>`;
+  }
+  field += `</div>`;
+  const radius = [[21, 25], [32, 33], [42, 40]];   // 横向 %，纵向 %
+  [inner, middle, shownOuter].forEach((list, r) => list.forEach((p, k) => {
     const ang = (k / Math.max(list.length, 1)) * Math.PI * 2 + r * 0.9 + 0.4;
-    const x = 50 + Math.cos(ang) * radius[r][0], y = 46 + Math.sin(ang) * radius[r][1];
+    const x = 50 + Math.cos(ang) * radius[r][0], y = 50 + Math.sin(ang) * radius[r][1];
     const m = current.members.find(x => x.id === p.sender);
     const cls = r === 0 ? "inner" : r === 2 ? "outer" : "";
     const tags = [p.harsh ? '<span class="hs">刺耳但有用</span>' : "", p.score ? `<span>${p.score} 人接话</span>` : "", p.starred ? '<span class="st">★</span>' : ""].filter(Boolean).join(" ");
-    html += `<button class="node ${cls} ${p.harsh ? "harsh" : ""}" style="--c:${m?.color || "#999"};left:${Math.max(10, Math.min(90, x))}%;top:${Math.max(10, Math.min(78, y))}%;animation-delay:${-k * 1.3}s"
+    field += `<button class="node ${cls} ${p.harsh ? "harsh" : ""}" style="--c:${m?.color || "#999"};left:${Math.max(11, Math.min(89, x))}%;top:${Math.max(11, Math.min(89, y))}%;animation-delay:${-k * 1.3}s"
       onclick="jumpTo('${p.id}')" title="点一下回到对话里这条消息"><div class="nh"><b>${esc(senderName(p.sender))}</b><span>${tags}</span></div>${esc(p.text.length > 60 ? p.text.slice(0, 60) + "…" : p.text)}</button>`;
   }));
-  html += `<div class="legend">
-      <div><i style="background:var(--text)"></i>越靠近中心：被越多成员接话、引用</div>
-      <div><span style="color:var(--star);width:10px">★</span>你标星的：只加记号，不改位置</div>
-      <div><i style="border:1px solid var(--faint)"></i>越靠边越淡：跑题、没人接</div></div>
-    <div class="sandbox-actions">
-      <button class="btn small" onclick="setView('chat')">回到对话继续聊</button>
-      <button class="btn small primary" onclick="toggleBoard(true);generateInsights()">总结共识</button></div>`;
-  box.innerHTML = html;
+  box.innerHTML = `<div class="sb-field">${field}</div>
+    <div class="sb-bar">
+      <div class="legend">
+        ${noReplies ? "<div>大家还没互相接话，点「让他们互相评论」看看谁会往中心靠</div>" : ""}
+        <div><i style="background:var(--text)"></i>越靠中心 = 越多成员接话</div>
+        <div><i style="border:1px solid var(--faint)"></i>靠边变淡 = 没人接</div>
+        <div><span style="color:var(--star)">★</span>你的星标，不改位置</div>
+        <div>每人内圈最多 1 张、中圈 2 张</div>
+        ${hidden > 0 ? `<div>还有 ${hidden} 条没显示</div>` : ""}
+      </div>
+      <div class="sandbox-actions">
+        <button class="btn small" onclick="setView('chat')">回到对话</button>
+        <button class="btn small primary" onclick="toggleBoard(true);generateInsights()">总结共识</button>
+      </div>
+    </div>`;
+  spreadNodes(box.querySelector(".sb-field"));
 }
+
+// 把叠在一起的卡片互相推开，也不让它们盖住中间的问题
+function spreadNodes(field) {
+  const W = field.clientWidth, H = field.clientHeight;
+  if (!W || !H) return;
+  const core = field.querySelector(".core");
+  const items = [...field.querySelectorAll(".node")].map(el => ({
+    el, x: parseFloat(el.style.left) / 100 * W, y: parseFloat(el.style.top) / 100 * H, w: el.offsetWidth + 14, h: el.offsetHeight + 12,
+  }));
+  const fixed = { x: W / 2, y: H / 2, w: core.offsetWidth + 24, h: core.offsetHeight + 24, fixed: true };
+  const all = [...items, fixed];
+  for (let iter = 0; iter < 120; iter++) {
+    let moved = false;
+    for (const a of items) {
+      for (const b of all) {
+        if (a === b) continue;
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const ox = (a.w + b.w) / 2 - Math.abs(dx), oy = (a.h + b.h) / 2 - Math.abs(dy);
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        const share = b.fixed ? 1 : 0.5;
+        if (ox < oy) { const s = Math.sign(dx) || 1; a.x += s * ox * share; if (!b.fixed) b.x -= s * ox * share; }
+        else { const s = Math.sign(dy) || 1; a.y += s * oy * share; if (!b.fixed) b.y -= s * oy * share; }
+      }
+    }
+    for (const a of items) {   // 不出边界
+      a.x = Math.min(Math.max(a.x, a.w / 2 + 4), W - a.w / 2 - 4);
+      a.y = Math.min(Math.max(a.y, a.h / 2 + 4), H - a.h / 2 - 4);
+    }
+    if (!moved) break;
+  }
+  for (const a of items) { a.el.style.left = a.x + "px"; a.el.style.top = a.y + "px"; }
+}
+let resizeTimer = null;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => view === "sandbox" && renderSandbox(), 200); });
 
 /* ---------- 消息操作 ---------- */
 function findMsg(id) { return current.messages.find(m => m.id === id); }
@@ -1115,6 +1195,7 @@ function toggleBoard(force) {
   boardOpen = force ?? !boardOpen;
   $("board").hidden = !boardOpen;
   $("board-btn").classList.toggle("on", boardOpen);
+  if (view === "sandbox") renderSandbox();
   if (!boardOpen) { linking = null; return; }
   renderBoard();
   if (!current.insights && !insightsBusy && msgCount(current) >= 3) generateInsights();
