@@ -2,675 +2,1400 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AI 群聊</title>
 <style>
-  /* ====== 样式：模仿微信群聊的样子 ====== */
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; height: 100vh; display: flex; flex-direction: column;
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: #ededed; color: #222;
-  }
-  header {
-    background: #f7f7f7; border-bottom: 1px solid #ddd;
-    padding: 10px 16px; display: flex; align-items: center; gap: 10px;
-  }
-  header h1 { font-size: 17px; margin: 0; flex: 1; }
-  header .sub { font-size: 12px; color: #888; font-weight: normal; }
-  button {
-    border: 1px solid #ccc; background: #fff; border-radius: 6px;
-    padding: 6px 12px; cursor: pointer; font-size: 14px;
-  }
-  button:hover { background: #f0f0f0; }
-  button.primary { background: #07c160; color: #fff; border-color: #07c160; }
-  button.primary:hover { background: #06ad56; }
-  button:disabled { opacity: .5; cursor: not-allowed; }
+/* =====================================================================
+   外观：所有颜色都用变量，浅色 / 深色模式只是换一组变量
+   ===================================================================== */
+:root {
+  --bg: #f3f4f6; --surface: #ffffff; --surface-2: #f1f2f5; --surface-3: #e8eaee;
+  --text: #1b1c20; --muted: #8a8f99; --border: #e5e7eb;
+  --accent: #07c160; --accent-strong: #05a552; --accent-soft: #e6f8ee;
+  --danger: #e5484d; --shadow: 0 8px 30px rgba(15, 20, 30, .12);
+  --me-text: #ffffff; --radius: 14px;
+  --sidebar-w: 272px; --panel-w: 360px;
+}
+html[data-theme="dark"] {
+  --bg: #111215; --surface: #1b1c20; --surface-2: #24262b; --surface-3: #2e3036;
+  --text: #e9eaee; --muted: #8d919b; --border: #2c2e34;
+  --accent-soft: #12301f; --shadow: 0 8px 30px rgba(0, 0, 0, .45);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; display: flex; overflow: hidden; background: var(--bg); color: var(--text);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+input, textarea, select { font: inherit; color: var(--text); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 8px; }
 
-  #chat { flex: 1; overflow-y: auto; padding: 16px; }
-  .row { display: flex; gap: 8px; margin-bottom: 14px; align-items: flex-start; }
-  .row.me { flex-direction: row-reverse; }
-  .avatar {
-    width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: bold; font-size: 15px;
-  }
-  .body { max-width: 72%; }
-  .name { font-size: 12px; color: #888; margin: 0 0 3px 2px; }
-  .row.me .name { text-align: right; }
-  .bubble {
-    background: #fff; padding: 9px 12px; border-radius: 6px;
-    line-height: 1.6; font-size: 15px; word-wrap: break-word;
-  }
-  .row.me .bubble { background: #95ec69; }
-  .bubble.error { background: #fde2e2; color: #b00; }
-  .bubble pre { background: #f4f4f4; padding: 8px; border-radius: 4px; overflow-x: auto; }
-  .bubble code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; font-size: 13px; }
-  .bubble pre code { background: none; padding: 0; }
-  .meta { font-size: 11px; color: #aaa; margin: 3px 0 0 2px; }
-  .system { text-align: center; color: #999; font-size: 12px; margin: 10px 0 16px; }
-  .typing { color: #999; font-style: italic; }
-  .typing::after { content: ""; animation: dots 1.2s steps(4) infinite; }
-  @keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
-  .row.cont .avatar { visibility: hidden; height: 0; }
-  .row.cont .name { display: none; }
-  .row.cont { margin-top: -8px; }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 10px;
+  padding: 7px 14px; transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-strong); }
+.btn.danger { color: var(--danger); }
+.btn.small { padding: 4px 10px; font-size: 13px; border-radius: 8px; }
+.icon-btn {
+  border: none; background: transparent; width: 36px; height: 36px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--surface-2); }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
 
-  footer { background: #f7f7f7; border-top: 1px solid #ddd; padding: 10px 12px; }
-  #members-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; }
-  .chip {
-    padding: 3px 10px; border-radius: 12px; cursor: pointer; user-select: none;
-    border: 1px solid; background: #fff;
-  }
-  .chip.off { opacity: .35; text-decoration: line-through; }
-  .input-row { display: flex; gap: 8px; align-items: flex-end; }
-  #input {
-    flex: 1; resize: none; border: 1px solid #ccc; border-radius: 6px;
-    padding: 8px; font-size: 15px; font-family: inherit; min-height: 40px; max-height: 160px;
-  }
-  .hint { font-size: 12px; color: #999; margin-top: 6px; }
+/* ---------- 头像 ---------- */
+.avatar {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  background: color-mix(in srgb, var(--c, #999) 22%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--c, #999) 45%, transparent);
+  user-select: none;
+}
+.avatar.sm { width: 28px; height: 28px; font-size: 15px; border-radius: 9px; }
+.mosaic {
+  width: 44px; height: 44px; border-radius: 12px; background: var(--surface-3); flex-shrink: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; font-size: 15px;
+}
+.mosaic span { display: flex; align-items: center; justify-content: center; border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 25%, var(--surface)); }
 
-  /* 设置弹窗 */
-  #settings-bg {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
-    align-items: center; justify-content: center; z-index: 10;
-  }
-  #settings {
-    background: #fff; border-radius: 10px; width: min(720px, 94vw);
-    max-height: 90vh; overflow-y: auto; padding: 20px;
-  }
-  #settings h2 { margin-top: 0; font-size: 18px; }
-  #settings h3 { font-size: 15px; margin: 18px 0 8px; }
-  #settings label { display: block; font-size: 13px; color: #555; margin: 8px 0 3px; }
-  #settings input[type=text], #settings input[type=password], #settings textarea, #settings select {
-    width: 100%; padding: 7px; border: 1px solid #ccc; border-radius: 5px;
-    font-size: 14px; font-family: inherit;
-  }
-  .member-card {
-    border: 1px solid #e3e3e3; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
-  }
-  .member-card .top { display: flex; gap: 8px; align-items: center; }
-  .member-card .top input[type=text] { flex: 1; }
-  .member-card input[type=color] { width: 40px; height: 32px; border: none; padding: 0; }
-  .small { font-size: 12px; color: #888; }
-  .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+/* =====================================================================
+   左侧：群列表
+   ===================================================================== */
+#sidebar {
+  width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0; z-index: 20;
+}
+.sidebar-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 10px 16px; }
+.sidebar-head h1 { font-size: 18px; margin: 0; flex: 1; letter-spacing: .5px; }
+#group-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
+.group-item {
+  display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 12px;
+  cursor: pointer; margin-bottom: 2px; position: relative;
+}
+.group-item:hover { background: var(--surface-2); }
+.group-item.active { background: var(--accent-soft); }
+.group-item .info { flex: 1; min-width: 0; }
+.group-item .row1 { display: flex; gap: 6px; align-items: baseline; }
+.group-item .gname { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group-item .gtime { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.group-item .preview { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge {
+  position: absolute; left: 44px; top: 5px; background: var(--danger); color: #fff; font-size: 11px;
+  min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px; display: flex; align-items: center; justify-content: center;
+}
+.sidebar-foot { border-top: 1px solid var(--border); padding: 10px 12px; display: flex; gap: 8px; align-items: center; }
+.sidebar-foot .me { flex: 1; display: flex; gap: 8px; align-items: center; min-width: 0; }
+.sidebar-foot .me span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* =====================================================================
+   中间：聊天区
+   ===================================================================== */
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+#chat-head {
+  height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 18px;
+  background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#menu-btn { display: none; }
+.head-title { flex: 1; min-width: 0; }
+.head-title .t { font-weight: 650; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.head-title .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#head-members { display: flex; cursor: pointer; padding: 4px; border-radius: 12px; }
+#head-members:hover { background: var(--surface-2); }
+#head-members .avatar { margin-left: -8px; border: 2px solid var(--surface); }
+#head-members .avatar:first-child { margin-left: 0; }
+
+#chat { flex: 1; overflow-y: auto; padding: 18px 22px 8px; }
+#messages { max-width: 860px; margin: 0 auto; }
+.time-sep { text-align: center; font-size: 12px; color: var(--muted); margin: 14px 0 10px; }
+.sys-msg { text-align: center; margin: 12px 0 16px; }
+.sys-msg span { background: var(--surface-2); color: var(--muted); font-size: 12px; padding: 4px 12px; border-radius: 20px; }
+.empty-hint { text-align: center; color: var(--muted); margin-top: 18vh; }
+.empty-hint .big { font-size: 44px; }
+
+.msg { display: flex; gap: 10px; margin-bottom: 14px; position: relative; animation: pop .22s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.msg.me { flex-direction: row-reverse; }
+.msg.cont { margin-top: -9px; }
+.msg.cont .avatar { visibility: hidden; height: 0; }
+.msg.cont .msg-name { display: none; }
+.msg-body { max-width: min(74%, 600px); min-width: 0; display: flex; flex-direction: column; }
+.msg.me .msg-body { align-items: flex-end; }
+.msg.me .atts { justify-content: flex-end; }
+.msg-name { font-size: 12px; color: var(--muted); margin: 0 0 3px 3px; display: flex; gap: 6px; align-items: baseline; }
+.msg-name b { color: var(--c); font-weight: 600; }
+.bubble {
+  background: var(--surface); padding: 9px 13px; border-radius: 4px var(--radius) var(--radius) var(--radius);
+  word-wrap: break-word; overflow-wrap: anywhere; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  border: 1px solid var(--border);
+}
+.msg.cont .bubble { border-radius: var(--radius); }
+.msg.me .bubble {
+  background: linear-gradient(135deg, #2fd17c, var(--accent)); color: var(--me-text);
+  border: none; border-radius: var(--radius) 4px var(--radius) var(--radius);
+}
+.msg.me.cont .bubble { border-radius: var(--radius); }
+.bubble.error { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); border-color: transparent; }
+.bubble pre { background: var(--surface-2); color: var(--text); padding: 9px 11px; border-radius: 8px; overflow-x: auto; margin: 6px 0; font-size: 13px; }
+.bubble code { background: var(--surface-2); color: var(--text); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+.bubble pre code { background: none; padding: 0; }
+.quote {
+  font-size: 13px; opacity: .85; border-left: 3px solid currentColor; padding: 2px 0 2px 8px; margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.atts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.atts:last-child { margin-bottom: 0; }
+.atts img { max-width: 240px; max-height: 240px; border-radius: 10px; cursor: zoom-in; display: block; }
+.file-chip {
+  display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 10px;
+  background: rgba(127,127,127,.14); font-size: 13px; max-width: 260px;
+}
+.file-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-actions .meta { font-size: 11px; color: var(--muted); padding: 3px 6px; align-self: center; white-space: nowrap; }
+.msg-body > .atts { margin-bottom: 5px; }
+.msg-body > .atts img { border: 1px solid var(--border); }
+.msg-body > .atts .file-chip { background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; }
+.msg-actions {
+  position: absolute; top: -14px; display: none; gap: 2px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; padding: 2px; box-shadow: var(--shadow); z-index: 2;
+}
+.msg:not(.me) .msg-actions { left: 56px; }
+.msg.me .msg-actions { right: 56px; }
+.msg:hover .msg-actions, .msg.show-actions .msg-actions { display: flex; }
+.msg-actions button { border: none; background: none; padding: 3px 8px; border-radius: 7px; font-size: 12px; }
+.msg-actions button:hover { background: var(--surface-2); }
+
+#typing-area { max-width: 860px; margin: 0 auto; }
+.typing-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.dots { display: inline-flex; gap: 4px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: bounce 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 0%, 60%, 100% { transform: none; opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+#new-pill {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 150px; display: none;
+  background: var(--accent); color: #fff; border: none; border-radius: 20px; padding: 6px 14px;
+  box-shadow: var(--shadow); font-size: 13px; z-index: 5;
+}
+
+/* ---------- 输入区 ---------- */
+#composer-wrap { padding: 8px 18px 14px; flex-shrink: 0; }
+#composer-inner { max-width: 860px; margin: 0 auto; }
+.tools-row { display: flex; gap: 6px; margin-bottom: 7px; align-items: center; flex-wrap: wrap; }
+.chip-btn {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 20px; padding: 4px 12px; font-size: 13px;
+}
+.chip-btn:hover { background: var(--surface-2); }
+.chip-btn:disabled { opacity: .45; cursor: not-allowed; }
+.tools-row .hint { margin-left: auto; font-size: 12px; color: var(--muted); }
+#composer {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 6px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04); transition: border-color .15s;
+}
+#composer:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+#composer.dragover { border-color: var(--accent); background: var(--accent-soft); }
+#reply-bar, #pending-atts { display: none; margin: 2px 6px 6px; }
+#reply-bar { font-size: 13px; color: var(--muted); align-items: center; gap: 8px; background: var(--surface-2); padding: 6px 10px; border-radius: 10px; }
+#reply-bar span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pending-atts { flex-wrap: wrap; gap: 8px; }
+.pending { position: relative; }
+.pending img { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; display: block; }
+.pending .x {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
+  border: none; background: var(--text); color: var(--surface); font-size: 12px; line-height: 20px; padding: 0;
+}
+.compose-row { display: flex; align-items: flex-end; gap: 4px; }
+#input {
+  flex: 1; resize: none; border: none; outline: none; background: transparent;
+  padding: 8px 6px; min-height: 38px; max-height: 180px; line-height: 1.5;
+}
+#send-btn {
+  width: 38px; height: 38px; border-radius: 12px; border: none; background: var(--accent); color: #fff;
+  font-size: 17px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+#send-btn:hover { background: var(--accent-strong); }
+#send-btn.stop { background: var(--text); color: var(--surface); }
+
+/* @ 提示 */
+#mention-pop {
+  position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 4px;
+  min-width: 220px; display: none; z-index: 10;
+}
+.mention-item { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.mention-item.active, .mention-item:hover { background: var(--surface-2); }
+
+/* =====================================================================
+   右侧：群设置 & 成员面板
+   ===================================================================== */
+#panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--panel-w); max-width: 100vw;
+  background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow);
+  transform: translateX(105%); transition: transform .22s ease; z-index: 40; display: flex; flex-direction: column;
+}
+#panel.open { transform: none; }
+.panel-head { display: flex; align-items: center; padding: 14px 10px 10px 18px; font-weight: 650; font-size: 16px; }
+.panel-head span { flex: 1; }
+#panel-body { flex: 1; overflow-y: auto; padding: 0 16px 24px; }
+.section-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .5px; margin: 18px 2px 8px; text-transform: uppercase; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px 2px; }
+.field input[type=text], .field input[type=password], .field textarea, .field select {
+  width: 100%; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; padding: 8px 10px; outline: none;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); background: var(--surface); }
+.field textarea { resize: vertical; min-height: 84px; }
+.segmented { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; }
+.segmented button { flex: 1; border: none; background: transparent; border-radius: 8px; padding: 6px 4px; font-size: 13px; }
+.segmented button.on { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+.mode-desc { font-size: 12px; color: var(--muted); margin: 6px 2px 0; }
+
+.member-card { border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
+.member-card.disabled .mc-head { opacity: .5; }
+.mc-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; }
+.mc-head:hover { background: var(--surface-2); }
+.mc-head .info { flex: 1; min-width: 0; }
+.mc-head .n { font-weight: 600; }
+.mc-head .m { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag { font-size: 11px; padding: 0 6px; border-radius: 6px; background: var(--surface-3); color: var(--muted); margin-left: 4px; }
+.mc-edit { display: none; padding: 4px 12px 12px; border-top: 1px solid var(--border); }
+.member-card.open .mc-edit { display: block; }
+.member-card.open .mc-head { background: var(--surface-2); }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatch.on { border-color: var(--text); }
+.row2 { display: flex; gap: 8px; }
+.row2 .field { flex: 1; }
+.row2 .field.narrow { flex: 0 0 76px; }
+.model-info { font-size: 12px; color: var(--muted); margin: 4px 2px 0; }
+
+/* 开关 */
+.switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch span { position: absolute; inset: 0; background: var(--surface-3); border-radius: 22px; transition: .2s; cursor: pointer; }
+.switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::before { transform: translateX(16px); }
+
+/* =====================================================================
+   弹窗、提示、图片查看
+   ===================================================================== */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 50; display: none;
+  align-items: center; justify-content: center; padding: 16px;
+}
+.overlay.show { display: flex; }
+.modal { background: var(--surface); border-radius: 18px; width: min(480px, 100%); max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: var(--shadow); }
+.modal h2 { margin: 0 0 14px; font-size: 18px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.key-row { display: flex; gap: 6px; }
+.key-row input { flex: 1; }
+#lightbox img { max-width: 94vw; max-height: 90vh; border-radius: 12px; }
+#scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 15; display: none; }
+#toast {
+  position: fixed; left: 50%; top: 18px; transform: translateX(-50%) translateY(-80px); background: var(--text); color: var(--surface);
+  padding: 8px 16px; border-radius: 12px; font-size: 14px; z-index: 60; transition: transform .25s; max-width: 90vw;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* =====================================================================
+   窄屏（手机）布局
+   ===================================================================== */
+@media (max-width: 760px) {
+  #sidebar { position: fixed; top: 0; bottom: 0; left: 0; transform: translateX(-105%); transition: transform .22s; box-shadow: var(--shadow); }
+  body.sidebar-open #sidebar { transform: none; }
+  body.sidebar-open #scrim { display: block; }
+  #menu-btn { display: inline-flex; }
+  #chat-head { padding-left: 6px; }
+  #chat { padding: 14px 12px 6px; }
+  #composer-wrap { padding: 6px 10px calc(10px + env(safe-area-inset-bottom)); }
+  .msg-body { max-width: 80%; }
+  .tools-row .hint { display: none; }
+  #panel { width: 100vw; }
+}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>AI 群聊 <span class="sub" id="status">未设置 API Key</span></h1>
-  <button onclick="openSettings()">⚙️ 设置</button>
-  <button onclick="clearChat()">🗑 清空</button>
-</header>
-
-<div id="chat"></div>
-
-<footer>
-  <div id="members-bar"></div>
-  <div class="input-row">
-    <textarea id="input" rows="1" placeholder="说点什么… 用 @名字 只叫某个AI回答"></textarea>
-    <button id="btn-send" class="primary" onclick="send()">发送</button>
-    <button id="btn-debate" onclick="debateRound()" title="让每个AI看完别人的回答后发表评论">💬 互相评论</button>
-    <button id="btn-stop" onclick="stopAll()" disabled>⏹ 停止</button>
+<!-- ============ 左侧：群列表 ============ -->
+<aside id="sidebar">
+  <div class="sidebar-head">
+    <h1>AI 群聊</h1>
+    <button class="icon-btn" title="新建群聊" onclick="newGroup()">＋</button>
   </div>
-  <div class="hint">Enter 发送，Shift+Enter 换行。点上面的名字可以临时让某个AI"静音"。</div>
-</footer>
+  <div id="group-list"></div>
+  <div class="sidebar-foot">
+    <div class="me" id="me-box"></div>
+    <button class="icon-btn" title="设置" onclick="openSettings()">⚙️</button>
+  </div>
+</aside>
+<div id="scrim" onclick="closeSidebar()"></div>
 
-<!-- ====== 设置弹窗 ====== -->
-<div id="settings-bg">
-  <div id="settings">
+<!-- ============ 中间：聊天 ============ -->
+<main id="main">
+  <header id="chat-head">
+    <button class="icon-btn" id="menu-btn" onclick="openSidebar()">☰</button>
+    <div class="head-title">
+      <div class="t" id="head-title"></div>
+      <div class="s" id="head-sub"></div>
+    </div>
+    <div id="head-members" title="群成员和群设置" onclick="togglePanel()"></div>
+  </header>
+
+  <div id="chat">
+    <div id="messages"></div>
+    <div id="typing-area"></div>
+  </div>
+  <button id="new-pill" onclick="scrollToBottom(true)">有新消息 ↓</button>
+
+  <div id="composer-wrap">
+    <div id="composer-inner">
+      <div class="tools-row">
+        <button class="chip-btn" id="debate-btn" onclick="debateRound()" title="让每个AI看完别人的发言后互相评论">💬 让他们互相评论</button>
+        <span class="hint">Enter 发送 · Shift+Enter 换行 · @ 叫人 · 可拖入或粘贴图片</span>
+      </div>
+      <div id="composer" style="position:relative">
+        <div id="mention-pop"></div>
+        <div id="reply-bar"><span id="reply-text"></span><button class="icon-btn" style="width:24px;height:24px;font-size:13px" onclick="setReply(null)">✕</button></div>
+        <div id="pending-atts"></div>
+        <div class="compose-row">
+          <button class="icon-btn" title="发送图片或文件（图片、PDF、文本/代码文件）" onclick="document.getElementById('file-input').click()">📎</button>
+          <textarea id="input" rows="1" placeholder="说点什么…"></textarea>
+          <button id="send-btn" title="发送" onclick="onSendBtn()">➤</button>
+        </div>
+      </div>
+      <input type="file" id="file-input" multiple hidden
+        accept="image/*,.pdf,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.java,.c,.cpp,.cs,.go,.rs,.sql,.xml,.yaml,.yml,.log">
+    </div>
+  </div>
+</main>
+
+<!-- ============ 右侧：群设置 & 成员 ============ -->
+<aside id="panel">
+  <div class="panel-head"><span>群设置</span><button class="icon-btn" onclick="togglePanel(false)">✕</button></div>
+  <div id="panel-body"></div>
+</aside>
+
+<!-- ============ 设置弹窗 ============ -->
+<div class="overlay" id="settings-ov">
+  <div class="modal">
     <h2>设置</h2>
-
-    <label>OpenRouter API Key（只保存在你这台电脑的浏览器里）</label>
-    <input type="password" id="set-key" placeholder="sk-or-v1-...">
-    <div class="small">去 openrouter.ai 注册 → 充值少量金额 → Keys 页面创建一个 key，粘贴到这里。</div>
-
-    <label>你在群里的名字</label>
-    <input type="text" id="set-username">
-
-    <label>发言模式</label>
-    <select id="set-mode">
-      <option value="natural">自然群聊（随机顺序，能看到彼此，会接话、会@人、没话说就潜水）推荐</option>
-      <option value="parallel">同时回答（大家各自独立思考，互相看不到这一轮的回答）</option>
-      <option value="sequential">轮流发言（后面的人能看到前面的人刚说了什么）</option>
-    </select>
-
-    <h3>群成员 <span class="small" id="model-load-status"></span></h3>
-    <div id="member-list"></div>
-    <button onclick="addMember()">＋ 添加成员</button>
-    <button onclick="resetPersonas()" title="把默认成员的人设恢复成内置的新人设">↺ 恢复默认人设</button>
-    <datalist id="model-options"></datalist>
-
-    <div class="settings-actions">
-      <button onclick="closeSettings()">取消</button>
-      <button class="primary" onclick="saveSettings()">保存</button>
+    <div class="field">
+      <label>OpenRouter API Key（只保存在这台设备上）</label>
+      <div class="key-row">
+        <input type="password" id="set-key" placeholder="sk-or-v1-…">
+        <button class="btn small" onclick="toggleKeyVisible()">👁</button>
+      </div>
+      <div class="small muted" style="margin:4px 2px 0">在 openrouter.ai → Keys 创建。key 只显示一次，建议存进密码管理器。</div>
+    </div>
+    <div class="row2">
+      <div class="field narrow"><label>头像</label><input type="text" id="set-avatar" maxlength="4"></div>
+      <div class="field"><label>你在群里的名字</label><input type="text" id="set-username"></div>
+    </div>
+    <div class="field">
+      <label>外观</label>
+      <div class="segmented" id="set-theme">
+        <button data-v="auto">跟随系统</button><button data-v="light">浅色</button><button data-v="dark">深色</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>模型列表</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="small muted" id="model-status" style="flex:1"></span>
+        <button class="btn small" onclick="loadModels(true)">刷新</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn primary" onclick="saveSettings()">保存</button>
     </div>
   </div>
 </div>
 
+<!-- 确认弹窗 -->
+<div class="overlay" id="confirm-ov">
+  <div class="modal" style="width:min(380px,100%)">
+    <div id="confirm-text" style="margin-bottom:6px"></div>
+    <div class="modal-actions">
+      <button class="btn" id="confirm-no">取消</button>
+      <button class="btn primary" id="confirm-yes">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 图片查看 -->
+<div class="overlay" id="lightbox" onclick="this.classList.remove('show')"><img alt=""></div>
+<div id="toast"></div>
+
+<datalist id="model-options"></datalist>
+
 <script>
 /* =====================================================================
-   AI 群聊 —— 一个网页，让多个 AI 在同一个"群"里回答你
-   原理：把你的话通过 OpenRouter 的 API 发给不同的模型，
-        再把大家的回答按群聊的形式显示出来。
+   AI 群聊 v0.2
+   - 多个群，每个群有自己的成员、人设和聊天记录
+   - 通过 OpenRouter 调用各家模型；可以发图片、PDF、文本文件
+   - 数据都存在本机：设置在 localStorage，群和聊天记录在 IndexedDB（容量大，放得下图片）
    ===================================================================== */
 
-const API_URL    = "https://openrouter.ai/api/v1/chat/completions";
+const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
-const MAX_HISTORY = 40;   // 每次最多把最近 40 条消息发给 AI（太多会更贵更慢）
+const MAX_HISTORY = 40;     // 每次最多把最近 40 条消息发给 AI
+const IMAGE_HISTORY = 6;    // 只有最近 6 条消息里的图片/PDF 会真的发给 AI（更早的只说"发过一张图"），省钱
+const MAX_CHAIN = 4;        // 一轮里AI之间互相@接话最多几次
+const PALETTE = ["#d97757", "#10a37f", "#4285f4", "#6b5ce7", "#e8a33d", "#e05d8c", "#2bb5c4", "#7a8a99"];
 
-/* ---------- 默认的群成员 ----------
-   modelPattern：用来从最新模型列表里自动挑选"这一家最新的模型"。
-   model：实际使用的模型名字（自动挑选后会填进来，你也可以在设置里手动改）。 */
+/* ---------- 默认成员和人设模板 ---------- */
+const PERSONA_TEMPLATES = {
+  "靠谱学长": "群里靠谱又有点话痨的学长型。认真，爱分析，会直说风险，但不是老古板，偶尔冷幽默、自嘲。",
+  "点子王": "群里的点子王。热情、反应快、爱用emoji，脑洞一个接一个，有时候有点浮夸，被怼了也不生气。",
+  "杠精": "群里的杠精担当。总能找到别人没想到的角度，口头禅是'但是'，不过杠得有理有据，杠完会给建设性意见。",
+  "接地气老朋友": "群里最接地气的老朋友。熟悉国内情况和网络梗，说话像在饭桌上聊天，爱举身边的例子。",
+  "知心大姐姐": "知心大姐姐，温柔但不软弱。说话轻声细语，会先接住对方的情绪，再说道理，比如\"我能理解你为什么会这么想\"\"先别急，我们慢慢捋一捋\"。她不会一味顺着人说好话：别人的想法不靠谱时，她会温和但很清楚地指出问题，像姐姐那样\"我得跟你说句实话\"。比起\"该怎么做\"，她更在意\"你自己真正想要什么\"，常常反问一句，让人自己想明白。群里有人吵起来，她会出来打圆场，也会替说话少的人说两句。偶尔用\"～\"和🫶，但不过分甜腻。",
+  "毒舌损友": "嘴很毒的损友，专门戳破幻想、吐槽不靠谱的计划，损得好笑但有分寸、不说脏话。吐槽完一定会认真给一个更靠谱的替代方案。",
+  "温哥华学姐": "在温哥华读了三年书的学姐，熟悉加拿大留学、打工、租房、选课、PR 这些事，说话实在，爱分享自己踩过的坑。涉及政策和规定时会提醒大家去官网核实。",
+  "冷静分析师": "说话简短冷静，只讲数据和逻辑，常问'证据是什么''成本多少''最坏情况是什么'，偶尔冷不丁来一句很好笑的话。",
+};
 const DEFAULT_MEMBERS = [
-  { id: "m1", name: "Claude",   color: "#d97757", enabled: true, model: "",
-    modelPattern: "^anthropic/claude-sonnet",
-    persona: "群里靠谱又有点话痨的学长型。认真，爱分析，会直说风险，但不是老古板，偶尔冷幽默、自嘲。" },
-  { id: "m2", name: "ChatGPT",  color: "#10a37f", enabled: true, model: "",
-    modelPattern: "^openai/gpt-\\d",
-    persona: "群里的点子王。热情、反应快、爱用emoji，脑洞一个接一个，有时候有点浮夸，被怼了也不生气。" },
-  { id: "m3", name: "Gemini",   color: "#4285f4", enabled: false, model: "",
-    modelPattern: "^google/gemini-\\d",
-    persona: "群里的杠精担当。总能找到别人没想到的角度，口头禅是'但是'，不过杠得有理有据，杠完会给建设性意见。" },
-  { id: "m4", name: "DeepSeek", color: "#6b5ce7", enabled: false, model: "",
-    modelPattern: "^deepseek/deepseek",
-    persona: "群里最接地气的老朋友。熟悉国内情况和网络梗，说话像在饭桌上聊天，爱举身边的例子。" },
+  { id: "m1", name: "Claude", avatar: "🦉", color: "#d97757", enabled: true, model: "",
+    modelPattern: "^anthropic/claude-sonnet", persona: PERSONA_TEMPLATES["靠谱学长"] },
+  { id: "m2", name: "ChatGPT", avatar: "💡", color: "#10a37f", enabled: true, model: "",
+    modelPattern: "^openai/gpt-\\d", persona: PERSONA_TEMPLATES["点子王"] },
+  { id: "m3", name: "Gemini", avatar: "🌸", color: "#4285f4", enabled: false, model: "",
+    modelPattern: "^google/gemini-\\d", persona: PERSONA_TEMPLATES["杠精"] },
+  { id: "m4", name: "DeepSeek", avatar: "🥟", color: "#6b5ce7", enabled: false, model: "",
+    modelPattern: "^deepseek/deepseek", persona: PERSONA_TEMPLATES["接地气老朋友"] },
 ];
-const OLD_PERSONAS = [   // 旧版本的默认人设，打开新版时自动升级成上面的新人设
+const OLD_PERSONAS = [
   "你思考细致，喜欢把问题拆开讲清楚，也会坦诚指出风险。", "你反应快，点子多，说话直接。",
   "你擅长提供不同角度和实际例子。", "你熟悉中国的情况，说话接地气。",
 ];
-
-/* ---------- 读写本地存储（浏览器里的小仓库，关掉网页也还在） ---------- */
-function load(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-  catch { return fallback; }
-}
-function save(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-let config = load("aigc-config", {
-  apiKey: "", userName: "我", mode: "natural", version: 2,
-  members: structuredClone(DEFAULT_MEMBERS),
-});
-// 从旧版本升级：默认改成"自然群聊"模式，没改过的旧人设换成新人设
-if ((config.version || 1) < 2) {
-  config.mode = "natural";
-  config.members.forEach(m => {
-    const def = DEFAULT_MEMBERS.find(d => d.id === m.id);
-    if (def && (!m.persona || OLD_PERSONAS.includes(m.persona))) m.persona = def.persona;
-  });
-  config.version = 2;
-  save("aigc-config", config);
-}
-let messages = load("aigc-messages", []);   // 聊天记录：{sender, text, time, error?, cost?}
-let allModels = [];                          // 从 OpenRouter 拉下来的模型列表
-let controllers = [];                        // 用来"停止"正在进行的请求
-let busy = false;
+const MODES = {
+  natural:    { label: "自然群聊", desc: "随机顺序发言，能看到彼此，会接话、会@人，没话说就潜水。" },
+  parallel:   { label: "同时回答", desc: "大家各自独立思考，互相看不到这一轮的回答，适合要几个不同意见。" },
+  sequential: { label: "轮流发言", desc: "按成员顺序一个个说，后面的人能接着前面的人说。" },
+};
 
 /* =====================================================================
-   1. 拉取最新模型列表，并自动给成员挑模型
+   存储
    ===================================================================== */
-async function loadModels() {
-  const statusEl = document.getElementById("model-load-status");
-  try {
-    statusEl.textContent = "（正在获取模型列表…）";
-    const res = await fetch(MODELS_URL);
-    const data = await res.json();
-    // 过滤掉批处理、免费限流版等特殊变体，按发布时间从新到旧排
-    allModels = (data.data || [])
-      .filter(m => !m.id.includes(":") && !/batch|image|audio|embed|tts|realtime/i.test(m.id))
-      .sort((a, b) => (b.created || 0) - (a.created || 0));
+function lsLoad(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+}
+function lsSave(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
 
-    const dl = document.getElementById("model-options");
-    dl.innerHTML = allModels.map(m =>
-      `<option value="${m.id}">${escapeHtml(m.name || m.id)}${priceText(m)}</option>`).join("");
-    statusEl.textContent = `（共 ${allModels.length} 个模型可选）`;
-
-    // 没选模型的成员，自动挑这一家最新的（设置窗口开着的话，也一起填进去）
-    if (autoPickModels(config.members)) { save("aigc-config", config); renderMembersBar(); }
-    if (draft && autoPickModels(draft)) renderMemberEditor();
-  } catch (e) {
-    statusEl.textContent = "（获取模型列表失败，可以手动填写模型名）";
-  }
+// IndexedDB：浏览器里的小数据库，每个群存成一条记录
+let dbPromise = null;
+function db() {
+  return dbPromise ||= new Promise((resolve, reject) => {
+    const req = indexedDB.open("aigc", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("groups", { keyPath: "id" });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbAll() {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const q = d.transaction("groups").objectStore("groups").getAll();
+    q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error);
+  });
+}
+async function idbPut(value) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction("groups", "readwrite");
+    t.objectStore("groups").put(value);
+    t.oncomplete = () => res(); t.onerror = () => rej(t.error);
+  });
+}
+async function idbDelete(id) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction("groups", "readwrite");
+    t.objectStore("groups").delete(id);
+    t.oncomplete = () => res(); t.onerror = () => rej(t.error);
+  });
+}
+function saveGroup(g, touch = true) {
+  if (touch) g.updatedAt = Date.now();
+  idbPut(g).catch(e => toast("保存失败：" + e.message));
 }
 
-// 给还没选模型的成员，按 modelPattern 自动挑这一家最新的标准版。返回：有没有改动
+/* ---------- 全局状态 ---------- */
+let config = lsLoad("aigc-config", {});
+config = Object.assign({ apiKey: "", userName: "我", userAvatar: "🙂", theme: "auto" }, config);
+let groups = [];
+let current = null;                 // 当前打开的群
+let allModels = [];
+const busyGroups = new Set();       // 哪些群正在有AI发言
+const controllers = new Map();      // 群id → 正在进行的请求（用来"停止"）
+const typing = new Map();           // 群id → 正在输入的成员id
+let pendingAtts = [];               // 输入框里还没发出去的附件
+let replyTo = null;                 // 正在引用的消息
+
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+
+/* =====================================================================
+   启动 & 旧版本数据迁移
+   ===================================================================== */
+function makeGroup(name, members) {
+  return { id: uid("g_"), name, mode: "natural", members, messages: [], createdAt: Date.now(), updatedAt: Date.now() };
+}
+function upgradeMember(m) {
+  const def = DEFAULT_MEMBERS.find(d => d.id === m.id);
+  if (!m.avatar) m.avatar = def?.avatar || (m.name || "A").slice(0, 1);
+  if (!m.persona || OLD_PERSONAS.includes(m.persona)) m.persona = def?.persona || m.persona || "";
+  if (!m.modelPattern && def) m.modelPattern = def.modelPattern;
+  return m;
+}
+
+async function init() {
+  applyTheme();
+  try { groups = await idbAll(); }
+  catch { groups = []; toast("本地数据库打不开，这次的聊天记录不会被保存"); }
+
+  if (!groups.length) {
+    // 从旧版本（只有一个群）搬过来
+    const old = lsLoad("aigc-config", {});
+    const oldMsgs = lsLoad("aigc-messages", []);
+    const members = (old.members?.length ? old.members : structuredClone(DEFAULT_MEMBERS)).map(upgradeMember);
+    const g = makeGroup("AI 群聊", members);
+    g.mode = old.mode || "natural";
+    g.messages = oldMsgs.map(m => ({ id: uid("msg_"), time: Date.now(), ...m }));
+    groups.push(g);
+    saveGroup(g);
+    delete config.members; delete config.mode; delete config.version;   // 这些现在存在每个群里了
+    lsSave("aigc-config", config);
+  }
+  groups.forEach(g => g.members.forEach(upgradeMember));
+  const last = groups.find(g => g.id === config.activeGroupId);
+  openGroup((last || sortedGroups()[0]).id);
+  renderMe();
+  loadModels();
+  if (!config.apiKey) openSettings();
+}
+
+/* =====================================================================
+   模型列表
+   ===================================================================== */
+async function loadModels(manual) {
+  $("model-status").textContent = "正在获取…";
+  try {
+    const res = await fetch(MODELS_URL);
+    const data = await res.json();
+    allModels = (data.data || [])
+      .filter(m => !m.id.includes(":") && !/batch|embed|tts|realtime|audio/i.test(m.id))
+      .sort((a, b) => (b.created || 0) - (a.created || 0));
+    $("model-options").innerHTML = allModels.map(m =>
+      `<option value="${esc(m.id)}">${esc(m.name || m.id)}${canSeeImages(m.id) ? " · 可看图" : ""}${priceText(m)}</option>`).join("");
+    $("model-status").textContent = `共 ${allModels.length} 个模型可选`;
+    for (const g of groups) if (autoPickModels(g.members)) saveGroup(g, false);
+    renderHeader(); renderPanel();
+    if (manual) toast("模型列表已更新");
+  } catch {
+    $("model-status").textContent = "获取失败（可以手动填写模型名）";
+  }
+}
+function modelInfo(id) { return allModels.find(m => m.id === id); }
+function canSeeImages(id) {
+  const mods = modelInfo(id)?.architecture?.input_modalities;
+  return mods ? mods.includes("image") : true;   // 不知道的话就试试
+}
+function priceText(m) {
+  const p = m.pricing;
+  if (!p || p.prompt == null) return "";
+  return ` · $${(parseFloat(p.prompt) * 1e6).toFixed(2)} / $${(parseFloat(p.completion) * 1e6).toFixed(2)} 每百万token`;
+}
+// 给还没选模型的成员，自动挑这一家最新一代里最便宜的标准版
 function autoPickModels(members) {
   if (!allModels.length) return false;
   let changed = false;
   for (const mem of members) {
-    if (!mem.model && mem.modelPattern) {
-      const re = new RegExp(mem.modelPattern, "i");
-      const matches = allModels.filter(m => re.test(m.id));
-      const standard = matches.filter(m => !/pro|mini|nano|lite|oss|codex|fast|preview/i.test(m.id.split("/")[1]));
-      const pool = standard.length ? standard : matches;
-      // 只看最新一代（最新发布的 60 天内），再从里面挑最便宜的，聊天够用又省钱
-      const newest = pool[0]?.created || 0;
-      const recent = pool.filter(m => newest - (m.created || 0) < 60 * 86400);
-      const price = m => parseFloat(m.pricing?.prompt) || 0;
-      const pick = recent.sort((a, b) => price(a) - price(b))[0];
-      if (pick) { mem.model = pick.id; changed = true; }
-    }
+    if (mem.model || !mem.modelPattern) continue;
+    const re = new RegExp(mem.modelPattern, "i");
+    const matches = allModels.filter(m => re.test(m.id));
+    const standard = matches.filter(m => !/pro|mini|nano|lite|oss|codex|fast|preview|image/i.test(m.id.split("/")[1]));
+    const pool = standard.length ? standard : matches;
+    const newest = pool[0]?.created || 0;
+    const price = m => parseFloat(m.pricing?.prompt) || 0;
+    const pick = pool.filter(m => newest - (m.created || 0) < 60 * 86400).sort((a, b) => price(a) - price(b))[0];
+    if (pick) { mem.model = pick.id; changed = true; }
   }
   return changed;
 }
+function shortModel(id) { return id ? id.split("/").pop() : "未选模型"; }
 
-function priceText(m) {
-  const p = m.pricing;
-  if (!p || p.prompt == null) return "";
-  const inM = (parseFloat(p.prompt) * 1e6).toFixed(2);
-  const outM = (parseFloat(p.completion) * 1e6).toFixed(2);
-  return ` — 输入 $${inM} · 输出 $${outM}（每百万token）`;
+/* =====================================================================
+   群列表（左侧）
+   ===================================================================== */
+function sortedGroups() { return [...groups].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); }
+
+function renderSidebar() {
+  $("group-list").innerHTML = sortedGroups().map(g => {
+    const last = [...g.messages].reverse().find(m => m.sender !== "system");
+    let preview = "还没有消息";
+    if (last) {
+      const who = last.sender === "user" ? "" : senderName(last.sender, g) + "：";
+      preview = who + (last.text || (last.attachments?.length ? "[附件]" : ""));
+    }
+    return `<div class="group-item ${g === current ? "active" : ""}" onclick="openGroup('${g.id}')">
+      ${mosaicHtml(g)}
+      ${g.unread ? `<div class="badge">${g.unread > 99 ? "99+" : g.unread}</div>` : ""}
+      <div class="info">
+        <div class="row1"><span class="gname">${esc(g.name)}</span><span class="gtime">${last ? shortTime(last.time) : ""}</span></div>
+        <div class="preview">${busyGroups.has(g.id) ? "正在聊天…" : esc(preview)}</div>
+      </div></div>`;
+  }).join("");
+}
+function mosaicHtml(g) {
+  const ms = g.members.filter(m => m.enabled).slice(0, 4);
+  const list = ms.length ? ms : g.members.slice(0, 4);
+  return `<div class="mosaic">${list.map(m => `<span style="--c:${m.color}">${esc(m.avatar)}</span>`).join("")}</div>`;
+}
+
+function openGroup(id) {
+  current = groups.find(g => g.id === id) || groups[0];
+  current.unread = 0;
+  config.activeGroupId = current.id;
+  lsSave("aigc-config", config);
+  setReply(null);
+  renderSidebar(); renderHeader(); renderChat(); renderPanel(); updateBusyUI();
+  closeSidebar();
+}
+
+async function newGroup() {
+  // 新群默认带上当前群的成员和人设（用户自己调好的不用再调一遍）
+  const members = structuredClone(current ? current.members : DEFAULT_MEMBERS);
+  const g = makeGroup("新的群聊", members);
+  groups.push(g);
+  saveGroup(g);
+  openGroup(g.id);
+  togglePanel(true);
+  setTimeout(() => { const el = $("group-name"); el?.focus(); el?.select(); }, 250);
+}
+
+async function deleteGroup() {
+  if (busyGroups.has(current.id)) return toast("这个群还在聊天，先停止再删除");
+  if (!await confirmBox(`删除「${esc(current.name)}」？聊天记录会一起删掉，不能恢复。`, "删除")) return;
+  const id = current.id;
+  groups = groups.filter(g => g.id !== id);
+  await idbDelete(id).catch(() => {});
+  if (!groups.length) { const g = makeGroup("AI 群聊", structuredClone(DEFAULT_MEMBERS)); groups.push(g); saveGroup(g); autoPickModels(g.members); }
+  togglePanel(false);
+  openGroup(sortedGroups()[0].id);
+}
+
+async function clearGroup() {
+  if (busyGroups.has(current.id)) return;
+  if (!await confirmBox("清空这个群的聊天记录？成员和人设会保留。", "清空")) return;
+  current.messages = [];
+  saveGroup(current);
+  renderChat(); renderSidebar(); renderPanel();
 }
 
 /* =====================================================================
-   2. 给每个 AI 准备"它眼中的聊天记录"
-   关键点：每个 AI 只知道自己说过的话是"自己说的"（assistant），
-          其他人（你和别的AI）说的话都会以「[名字]: 内容」的形式给它看。
+   顶栏
    ===================================================================== */
-function systemPromptFor(member) {
-  const others = config.members.filter(m => m.enabled && m.id !== member.id).map(m => m.name);
-  return `你在一个微信群里和朋友聊天，你不是在当AI助手。群里有真人「${config.userName}」` +
+function activeMembers(g = current) { return g.members.filter(m => m.enabled && m.model); }
+
+function renderHeader() {
+  if (!current) return;
+  $("head-title").textContent = current.name;
+  const act = activeMembers();
+  $("head-sub").onclick = config.apiKey ? null : openSettings;
+  $("head-sub").style.cursor = config.apiKey ? "" : "pointer";
+  $("head-sub").textContent = !config.apiKey ? "还没填 API Key，点这里去设置 ⚙️"
+    : act.length ? `${act.map(m => m.name).join("、")} · ${MODES[current.mode]?.label || ""}`
+    : "群里没有可用的AI，点右上角头像去开启";
+  const shown = current.members.filter(m => m.enabled).slice(0, 4);
+  $("head-members").innerHTML = (shown.length ? shown : current.members.slice(0, 1))
+    .map(m => `<div class="avatar sm" style="--c:${m.color}">${esc(m.avatar)}</div>`).join("") +
+    `<div class="avatar sm" style="--c:#999;margin-left:4px;border:none;background:var(--surface-2)">⋯</div>`;
+}
+
+/* =====================================================================
+   聊天记录显示
+   ===================================================================== */
+function senderName(sender, g = current) {
+  if (sender === "user") return config.userName;
+  if (sender === "system") return "主持人";
+  return g.members.find(x => x.id === sender)?.name || "已退群的成员";
+}
+
+function renderChat() {
+  const box = $("messages");
+  box.innerHTML = "";
+  if (!current.messages.length) {
+    box.innerHTML = `<div class="empty-hint"><div class="big">💬</div>
+      <div>群聊已就绪，说句话试试</div>
+      <div class="small" style="margin-top:6px">@名字 只叫某个人 · 📎 发图片和文件 · 点右上角头像改人设</div></div>`;
+  } else {
+    current.messages.forEach((m, i) => box.appendChild(messageEl(m, current.messages[i - 1])));
+  }
+  renderTyping();
+  scrollToBottom(true);
+}
+
+function messageEl(msg, prev) {
+  const frag = document.createDocumentFragment();
+  // 距离上一条超过 5 分钟，显示一个时间
+  if (!prev || msg.time - prev.time > 5 * 60 * 1000) {
+    const t = document.createElement("div");
+    t.className = "time-sep"; t.textContent = longTime(msg.time);
+    frag.appendChild(t);
+  }
+  if (msg.sender === "system") {
+    const d = document.createElement("div");
+    d.className = "sys-msg"; d.dataset.id = msg.id;
+    d.innerHTML = `<span>—— 互相评论环节 ——</span>`;
+    frag.appendChild(d);
+    return frag;
+  }
+  const isMe = msg.sender === "user";
+  const member = current.members.find(m => m.id === msg.sender);
+  const name = isMe ? config.userName : (member?.name || "已退群的成员");
+  const color = isMe ? "#07c160" : (member?.color || "#999");
+  const avatar = isMe ? config.userAvatar : (member?.avatar || "?");
+  const cont = prev && prev.sender === msg.sender && !msg.error && !msg.replyTo && msg.time - prev.time < 5 * 60 * 1000;
+
+  let quote = "";
+  if (msg.replyTo) {
+    const q = current.messages.find(m => m.id === msg.replyTo);
+    quote = `<div class="quote">${q ? esc(senderName(q.sender) + "：" + snippet(q)) : "（原消息已删除）"}</div>`;
+  }
+  const atts = msg.attachments?.length ? `<div class="atts">${msg.attachments.map(a =>
+    a.type === "image" ? `<img src="${a.dataUrl}" alt="${esc(a.name)}" onclick="viewImage(this.src)">`
+      : `<div class="file-chip">📄 <span>${esc(a.name)}</span><span class="muted">${fmtSize(a.size)}</span></div>`).join("")}</div>` : "";
+  const body = msg.text ? (isMe ? esc(msg.text).replace(/\n/g, "<br>") : renderMarkdown(msg.text)) : "";
+
+  const row = document.createElement("div");
+  row.className = "msg" + (isMe ? " me" : "") + (cont ? " cont" : "");
+  row.dataset.id = msg.id;
+  row.style.setProperty("--c", color);
+  row.innerHTML = `
+    <div class="avatar" style="--c:${color}">${esc(avatar)}</div>
+    <div class="msg-body">
+      <div class="msg-name"><b>${esc(name)}</b>${member && !isMe ? `<span>${esc(shortModel(member.model))}</span>` : ""}</div>
+      ${atts}
+      ${body || quote || msg.error ? `<div class="bubble${msg.error ? " error" : ""}">${quote}${body}</div>` : ""}
+    </div>
+    <div class="msg-actions">
+      <span class="meta">${shortTime(msg.time)}${msg.cost != null ? ` · $${Number(msg.cost).toFixed(4)}` : ""}</span>
+      ${msg.text ? `<button onclick="copyMsg('${msg.id}')">复制</button>` : ""}
+      ${msg.error ? "" : `<button onclick="quoteMsg('${msg.id}')">引用</button>`}
+      <button onclick="deleteMsg('${msg.id}')">删除</button>
+    </div>`;
+  // 手机上长按（或电脑右键）显示操作按钮
+  row.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    document.querySelectorAll(".msg.show-actions").forEach(x => x !== row && x.classList.remove("show-actions"));
+    row.classList.toggle("show-actions");
+  });
+  frag.appendChild(row);
+  return frag;
+}
+
+function addMessage(g, msg) {
+  msg.id ||= uid("msg_");
+  msg.time = Date.now();
+  const prev = g.messages[g.messages.length - 1];
+  g.messages.push(msg);
+  saveGroup(g);
+  if (g === current) {
+    if (g.messages.length === 1) $("messages").innerHTML = "";
+    const nearBottom = isNearBottom();
+    $("messages").appendChild(messageEl(msg, prev));
+    if (nearBottom || msg.sender === "user") scrollToBottom(); else $("new-pill").style.display = "block";
+  } else if (msg.sender !== "system") {
+    g.unread = (g.unread || 0) + 1;
+  }
+  renderSidebar();
+  return msg;
+}
+
+function renderTyping() {
+  const ids = typing.get(current.id) || new Set();
+  $("typing-area").innerHTML = [...ids].map(id => {
+    const m = current.members.find(x => x.id === id);
+    if (!m) return "";
+    return `<div class="typing-row"><div class="avatar" style="--c:${m.color}">${esc(m.avatar)}</div>
+      <div class="dots"><i></i><i></i><i></i></div><span class="small muted">${esc(m.name)} 正在输入</span></div>`;
+  }).join("");
+}
+function setTyping(g, memberId, on) {
+  if (!typing.has(g.id)) typing.set(g.id, new Set());
+  const s = typing.get(g.id);
+  on ? s.add(memberId) : s.delete(memberId);
+  if (g === current) { const nb = isNearBottom(); renderTyping(); if (nb) scrollToBottom(); }
+}
+
+const chatEl = () => $("chat");
+function isNearBottom() { const c = chatEl(); return c.scrollHeight - c.scrollTop - c.clientHeight < 140; }
+function scrollToBottom(instant) {
+  const c = chatEl();
+  c.scrollTo({ top: c.scrollHeight, behavior: instant ? "auto" : "smooth" });
+  $("new-pill").style.display = "none";
+}
+
+/* ---------- 消息操作 ---------- */
+function findMsg(id) { return current.messages.find(m => m.id === id); }
+function snippet(m) {
+  const t = (m.text || "").replace(/\s+/g, " ");
+  const a = m.attachments?.length ? `[${m.attachments.map(x => x.type === "image" ? "图片" : x.name).join("、")}]` : "";
+  return ((a + " " + t).trim()).slice(0, 60);
+}
+async function copyMsg(id) {
+  const text = findMsg(id)?.text || "";
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  toast("已复制");
+}
+function quoteMsg(id) { setReply(findMsg(id)); $("input").focus(); }
+function setReply(msg) {
+  replyTo = msg;
+  $("reply-bar").style.display = msg ? "flex" : "none";
+  if (msg) $("reply-text").textContent = `回复 ${senderName(msg.sender)}：${snippet(msg)}`;
+}
+async function deleteMsg(id) {
+  if (!await confirmBox("删除这条消息？", "删除")) return;
+  current.messages = current.messages.filter(m => m.id !== id);
+  saveGroup(current, false);
+  renderChat(); renderSidebar();
+}
+function viewImage(src) { $("lightbox").querySelector("img").src = src; $("lightbox").classList.add("show"); }
+
+/* =====================================================================
+   发送 & AI 发言
+   ===================================================================== */
+function systemPromptFor(member, g) {
+  const others = g.members.filter(m => m.enabled && m.id !== member.id).map(m => m.name);
+  const u = config.userName;
+  return `你在一个微信群「${g.name}」里和朋友聊天，你不是在当AI助手。群里有真人「${u}」` +
     (others.length ? `，还有 ${others.join("、")}` : "") +
     `。你叫「${member.name}」。你的人设：${member.persona || "普通群友"}
 
 怎么说话：
-- 像真人在群里打字：口语、短句，可以用语气词（哈哈哈、啊这、hmm、救命、绝了）和emoji，但别每句都加。
+- 像真人在群里打字：口语、短句，可以用语气词和emoji，但别每句都加。
 - 真人会连发几条短消息。你一次发 1~3 条，每条之间用单独一行的 /// 隔开，每条一般不超过 60 字。
-  只有对方明确要详细内容（方案、步骤、代码）时才发长消息。
+  只有对方明确要详细内容（方案、步骤、代码、分析文件）时才发长消息。
 - 要有自己的观点和情绪：可以开玩笑、吐槽、接别人的梗、反驳别人、站队。
 - 不要说"作为AI"，不要客套，不要列 1.2.3. 的小标题，不要最后总结，不要问"还有什么可以帮你的吗"。
-- 想让某个群友接话时可以@他，比如"@${others[0] || config.userName} 你怎么看"，被@的人会回你。别每次都@。
-- 别人说过的不要重复。真没什么想说的，就只回复 [PASS]（潜水）。但如果你被@了，或者还没人回复${config.userName}，就必须说点什么。
+- 想让某个群友接话时可以@他，比如"@${others[0] || u} 你怎么看"，被@的人会回你。别每次都@。
+- 群友发的图片和文件你能看到的话，就像朋友一样自然地聊它。
+- 别人说过的不要重复。真没什么想说的，就只回复 [PASS]（潜水）。但如果你被@了、被引用了，或者还没人回复${u}，就必须说点什么。
 - 别人的发言以「[名字]: 内容」出现。你直接说话，开头不要写自己的名字，也不要替别人说话。
-- 用${config.userName}用的语言聊。`;
+- 用${u}用的语言聊。`;
 }
 
-function senderName(sender) {
-  if (sender === "user") return config.userName;
-  if (sender === "system") return "主持人";
-  const m = config.members.find(x => x.id === sender);
-  return m ? m.name : "某位成员";
-}
+// 把群里的聊天记录，整理成"这个AI眼中"的对话
+function buildMessagesFor(member, g, history) {
+  const out = [{ role: "system", content: systemPromptFor(member, g) }];
+  const recent = history.filter(m => !m.error).slice(-MAX_HISTORY);
+  const vision = canSeeImages(member.model);
+  const toParts = c => typeof c === "string" ? [{ type: "text", text: c }] : c;
 
-function buildMessagesFor(member, history) {
-  const out = [{ role: "system", content: systemPromptFor(member) }];
-  for (const msg of history.slice(-MAX_HISTORY)) {
-    if (msg.error) continue;                          // 出错的消息不发给AI
+  recent.forEach((msg, idx) => {
     const isSelf = msg.sender === member.id;
     const role = isSelf ? "assistant" : "user";
-    const content = isSelf ? msg.text : `[${senderName(msg.sender)}]: ${msg.text}`;
+    let text = msg.text || "";
+    if (!isSelf) {
+      let q = "";
+      if (msg.replyTo) {
+        const qm = g.messages.find(m => m.id === msg.replyTo);
+        if (qm) q = `（回复 ${senderName(qm.sender, g)}：「${snippet(qm)}」）`;
+      }
+      text = `[${senderName(msg.sender, g)}]: ${q}${text}`;
+    }
+    const parts = [];
+    const fresh = idx >= recent.length - IMAGE_HISTORY;
+    for (const a of msg.attachments || []) {
+      if (a.type === "text") {
+        text += `\n\n[附件：${a.name}]\n\`\`\`\n${a.text}\n\`\`\``;
+      } else if (a.type === "image") {
+        if (vision && fresh) parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
+        else text += `\n[发了一张图片${vision ? "（较早的图片，这里省略）" : "，但你看不到图片，可以直说"}]`;
+      } else if (a.type === "pdf") {
+        if (fresh) parts.push({ type: "file", file: { filename: a.name, file_data: a.dataUrl } });
+        else text += `\n[发过一个PDF：${a.name}（较早的文件，这里省略）]`;
+      }
+    }
+    const content = parts.length ? [{ type: "text", text }, ...parts] : text;
     const last = out[out.length - 1];
-    // 连续两条都是 user 的话，合并成一条（有些模型要求 user/assistant 交替）
-    if (last.role === role && role !== "system") last.content += "\n\n" + content;
-    else out.push({ role, content });
-  }
-  // 最后一条必须是 user，否则 AI 不知道该回应什么
+    if (last.role === role && role !== "system") {
+      last.content = (typeof last.content === "string" && typeof content === "string")
+        ? last.content + "\n\n" + content
+        : [...toParts(last.content), ...toParts(content)];
+    } else out.push({ role, content });
+  });
   if (out[out.length - 1].role !== "user") {
     out.push({ role: "user", content: "[主持人]: 请继续发言，回应群里最新的讨论。" });
   }
   return out;
 }
 
-/* =====================================================================
-   3. 调用 API
-   ===================================================================== */
-async function askMember(member, history) {
+async function askMember(member, g, history) {
   const ctrl = new AbortController();
-  controllers.push(ctrl);
+  if (!controllers.has(g.id)) controllers.set(g.id, []);
+  controllers.get(g.id).push(ctrl);
   const res = await fetch(API_URL, {
-    method: "POST",
-    signal: ctrl.signal,
-    headers: {
-      "Authorization": "Bearer " + config.apiKey,
-      "Content-Type": "application/json",
-      "X-Title": "AI Group Chat",
-    },
-    body: JSON.stringify({
-      model: member.model,
-      messages: buildMessagesFor(member, history),
-      max_tokens: 1500,
-    }),
+    method: "POST", signal: ctrl.signal,
+    headers: { "Authorization": "Bearer " + config.apiKey, "Content-Type": "application/json", "X-Title": "AI Group Chat" },
+    body: JSON.stringify({ model: member.model, messages: buildMessagesFor(member, g, history), max_tokens: 1500 }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) {
-    throw new Error(data.error?.message || `请求失败（HTTP ${res.status}）`);
-  }
+  if (!res.ok || data.error) throw new Error(friendlyError(data.error?.message, res.status));
   const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error("模型没有返回内容");
   return { text, cost: data.usage?.cost };
 }
-
-/* =====================================================================
-   4. 发送消息 / 一轮发言 / 互相评论
-   ===================================================================== */
-function activeMembers() {
-  return config.members.filter(m => m.enabled && m.model);
+function friendlyError(msg, status) {
+  if (status === 401) return "API Key 不对或已失效，去 ⚙️ 设置里检查一下";
+  if (status === 402) return "OpenRouter 余额不足，去充值后再试";
+  if (status === 429) return "请求太频繁了，等一会儿再试";
+  return msg || `请求失败（HTTP ${status}）`;
 }
 
-// 解析 @：如果你 @了某些人，只让他们回答
-function mentionedMembers(text) {
-  const list = activeMembers();
-  const hit = config.members.filter(m => m.model && text.includes("@" + m.name));
-  return hit.length ? hit : list;
+function mentionedMembers(text, g) {
+  const hit = g.members.filter(m => m.enabled && m.model && text.includes("@" + m.name));
+  return hit.length ? hit : activeMembers(g);
 }
 
 async function send() {
-  const input = document.getElementById("input");
-  const text = input.value.trim();
-  if (!text || busy) return;
-  if (!config.apiKey) { openSettings(); return; }
-  const targets = mentionedMembers(text);
-  if (!targets.length) { alertInChat("群里没有可用的AI成员，去设置里开启或选个模型吧。"); return; }
+  const g = current;
+  const text = $("input").value.trim();
+  if ((!text && !pendingAtts.length) || busyGroups.has(g.id)) return;
+  if (!config.apiKey) return openSettings();
+  let targets = mentionedMembers(text, g);
+  // 引用了某个AI的话（又没@别人），就让被引用的那个AI来回
+  if (replyTo && !text.includes("@")) {
+    const qm = g.members.find(m => m.id === replyTo.sender && m.enabled && m.model);
+    if (qm) targets = [qm];
+  }
+  if (!targets.length) { toast("群里没有可用的AI，点右上角头像去开启成员"); return; }
 
-  input.value = ""; autoGrow();
-  addMessage({ sender: "user", text });
-  await runRound(targets);
+  addMessage(g, { sender: "user", text, attachments: pendingAtts.length ? pendingAtts : undefined, replyTo: replyTo?.id });
+  $("input").value = ""; autoGrow();
+  pendingAtts = []; renderPending(); setReply(null); hideMention();
+  await runRound(g, targets);
 }
 
 async function debateRound() {
-  if (busy) return;
-  if (!config.apiKey) { openSettings(); return; }
-  const targets = activeMembers();
-  if (targets.length < 2) { alertInChat("至少要有两个AI成员才能互相评论。"); return; }
-  addMessage({ sender: "system",
-    text: "大家看看刚才别人说的：谁说得不对？谁漏了什么？直接@他怼回去或者补充，这一轮不许潜水。" });
-  await runRound(targets, "natural");   // 评论环节用自然群聊模式，这样能接上彼此
+  const g = current;
+  if (busyGroups.has(g.id)) return;
+  if (!config.apiKey) return openSettings();
+  const targets = activeMembers(g);
+  if (targets.length < 2) return toast("至少要有两个AI成员才能互相评论");
+  addMessage(g, { sender: "system", text: "大家看看刚才别人说的：谁说得不对？谁漏了什么？直接@他怼回去或者补充，这一轮不许潜水。" });
+  await runRound(g, targets, "natural");
 }
 
-const MAX_CHAIN = 4;   // 一轮里AI之间互相@接话最多几次（防止聊个没完、花太多钱）
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
-
-async function runRound(targets, forceMode) {
-  setBusy(true);
-  const mode = forceMode || config.mode;
-  const said = [];   // 这一轮AI们说的话，用来找谁@了谁
+async function runRound(g, targets, forceMode) {
+  setBusy(g, true);
+  const mode = forceMode || g.mode;
+  const said = [];
   try {
     if (mode === "parallel") {
-      // 同时回答：所有人看到的是同一份"快照"，互相看不到本轮的回答
-      const snapshot = [...messages];
-      await Promise.all(targets.map(async m => said.push(...await replyFrom(m, snapshot))));
+      const snapshot = [...g.messages];
+      await Promise.all(targets.map(async m => said.push(...await replyFrom(g, m, snapshot))));
     } else {
-      // 自然群聊：随机顺序；轮流发言：按成员顺序。两种都能看到前面的人刚说的话
       const order = mode === "natural" ? shuffle(targets) : targets;
       for (const m of order) {
-        if (!busy) break;          // 点了"停止"
-        if (mode === "natural") await sleep(400 + Math.random() * 1200);   // 像真人一样停顿一下
-        said.push(...await replyFrom(m, messages));
+        if (!busyGroups.has(g.id)) break;
+        if (mode === "natural") await sleep(400 + Math.random() * 1200);
+        said.push(...await replyFrom(g, m, g.messages));
       }
     }
-    // 接话：AI们@了谁，谁就接着说（最多 MAX_CHAIN 次）
+    // 接话：AI们@了谁，谁就接着说
     let chain = 0;
-    for (let i = 0; i < said.length && chain < MAX_CHAIN && busy; i++) {
-      for (const target of membersMentionedIn(said[i])) {
-        if (chain >= MAX_CHAIN || !busy) break;
+    for (let i = 0; i < said.length && chain < MAX_CHAIN && busyGroups.has(g.id); i++) {
+      const targetsInMsg = activeMembers(g).filter(m => m.id !== said[i].sender && said[i].text.includes("@" + m.name));
+      for (const t of targetsInMsg) {
+        if (chain >= MAX_CHAIN || !busyGroups.has(g.id)) break;
         chain++;
         await sleep(500 + Math.random() * 1000);
-        said.push(...await replyFrom(target, messages));
+        said.push(...await replyFrom(g, t, g.messages));
       }
     }
   } finally {
-    setBusy(false);
+    setBusy(g, false);
   }
 }
 
-// 某条AI发言里@到的其他成员
-function membersMentionedIn(msg) {
-  return activeMembers().filter(m => m.id !== msg.sender && msg.text.includes("@" + m.name));
-}
-
-// 让某个成员发言。返回它发出的消息列表（潜水就是空列表）
-async function replyFrom(member, history) {
-  let typingEl = showTyping(member);
+async function replyFrom(g, member, history) {
+  setTyping(g, member.id, true);
   try {
-    const { text, cost } = await askMember(member, history);
-    // 拆成多条气泡：AI 用单独一行的 /// 分隔；把 [PASS] 去掉
-    const parts = text.replace(/\[PASS\]/gi, "").split(/\n?[ \t]*\/\/\/[ \t]*\n?/)
-                      .map(s => s.trim()).filter(Boolean);
-    typingEl.remove();
+    const { text, cost } = await askMember(member, g, history);
+    const parts = text.replace(/\[PASS\]/gi, "").split(/\n?[ \t]*\/\/\/[ \t]*\n?/).map(s => s.trim()).filter(Boolean);
     const out = [];
     for (let i = 0; i < parts.length; i++) {
-      if (!busy && i > 0) break;
-      if (i > 0) {   // 连发的下一条：先"正在输入…"一会儿，字越多打得越久
-        typingEl = showTyping(member);
+      if (i > 0) {
+        if (!busyGroups.has(g.id)) break;
         await sleep(Math.min(500 + parts[i].length * 35, 2500));
-        typingEl.remove();
       }
-      const msg = { sender: member.id, text: parts[i], cost: i === parts.length - 1 ? cost : undefined };
-      addMessage(msg);
-      out.push(msg);
+      out.push(addMessage(g, { sender: member.id, text: parts[i], cost: i === parts.length - 1 ? cost : undefined }));
     }
     return out;
   } catch (e) {
-    typingEl.remove();
-    const msg = e.name === "AbortError" ? "（已停止）" : "出错了：" + e.message;
-    addMessage({ sender: member.id, text: msg, error: true });
+    if (e.name !== "AbortError") addMessage(g, { sender: member.id, text: "出错了：" + e.message, error: true });
     return [];
+  } finally {
+    setTyping(g, member.id, false);
   }
 }
 
-function stopAll() {
-  controllers.forEach(c => c.abort());
-  controllers = [];
-  setBusy(false);
+function stopGroup(g) {
+  (controllers.get(g.id) || []).forEach(c => c.abort());
+  setBusy(g, false);
 }
+function setBusy(g, v) {
+  v ? busyGroups.add(g.id) : busyGroups.delete(g.id);
+  if (!v) { controllers.set(g.id, []); typing.set(g.id, new Set()); if (g === current) renderTyping(); }
+  updateBusyUI(); renderSidebar();
+}
+function updateBusyUI() {
+  const busy = busyGroups.has(current.id);
+  const b = $("send-btn");
+  b.classList.toggle("stop", busy);
+  b.textContent = busy ? "■" : "➤";
+  b.title = busy ? "停止" : "发送";
+  $("debate-btn").disabled = busy;
+}
+function onSendBtn() { busyGroups.has(current.id) ? stopGroup(current) : send(); }
 
-function setBusy(v) {
-  busy = v;
-  if (!v) controllers = [];
-  document.getElementById("btn-send").disabled = v;
-  document.getElementById("btn-debate").disabled = v;
-  document.getElementById("btn-stop").disabled = !v;
+/* =====================================================================
+   附件：图片 / PDF / 文本文件
+   ===================================================================== */
+const TEXT_EXT = /\.(txt|md|csv|json|js|ts|py|html|css|java|c|cpp|cs|go|rs|sql|xml|ya?ml|log)$/i;
+
+async function addFiles(files) {
+  for (const f of files) {
+    try {
+      if (f.type.startsWith("image/")) {
+        pendingAtts.push({ type: "image", name: f.name || "图片", size: f.size, dataUrl: await shrinkImage(f) });
+      } else if (f.type === "application/pdf" || /\.pdf$/i.test(f.name)) {
+        if (f.size > 15 * 1024 * 1024) { toast(`${f.name} 太大了（PDF 最大 15MB）`); continue; }
+        pendingAtts.push({ type: "pdf", name: f.name, size: f.size, dataUrl: await readAs(f, "dataurl") });
+      } else if (f.type.startsWith("text/") || TEXT_EXT.test(f.name)) {
+        let text = await readAs(f, "text");
+        if (text.length > 30000) text = text.slice(0, 30000) + "\n…（文件太长，后面省略了）";
+        pendingAtts.push({ type: "text", name: f.name, size: f.size, text });
+      } else {
+        toast(`暂时不支持 ${f.name}，可以发图片、PDF 或文本/代码文件`);
+      }
+    } catch { toast(`读取 ${f.name} 失败`); }
+  }
+  renderPending();
+}
+function readAs(file, kind) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result); r.onerror = () => rej(r.error);
+    kind === "text" ? r.readAsText(file) : r.readAsDataURL(file);
+  });
+}
+// 图片压缩到最长边 1280 像素，省空间也省钱
+async function shrinkImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.85);
+  } finally { URL.revokeObjectURL(url); }
+}
+function renderPending() {
+  const box = $("pending-atts");
+  box.style.display = pendingAtts.length ? "flex" : "none";
+  box.innerHTML = pendingAtts.map((a, i) => `<div class="pending">
+    ${a.type === "image" ? `<img src="${a.dataUrl}">` : `<div class="file-chip">📄 <span>${esc(a.name)}</span></div>`}
+    <button class="x" onclick="pendingAtts.splice(${i},1);renderPending()">✕</button></div>`).join("");
 }
 
 /* =====================================================================
-   5. 显示聊天内容
+   @ 提示
    ===================================================================== */
-function addMessage(msg) {
-  msg.time = Date.now();
-  messages.push(msg);
-  save("aigc-messages", messages);
-  renderMessage(msg);
+let mentionIdx = 0, mentionList = [];
+function checkMention() {
+  const el = $("input");
+  const before = el.value.slice(0, el.selectionStart);
+  const m = before.match(/@([^\s@]*)$/);
+  if (!m) return hideMention();
+  const q = m[1].toLowerCase();
+  mentionList = current.members.filter(x => x.enabled && x.name.toLowerCase().includes(q));
+  if (!mentionList.length) return hideMention();
+  mentionIdx = Math.min(mentionIdx, mentionList.length - 1);
+  const pop = $("mention-pop");
+  pop.innerHTML = mentionList.map((x, i) => `<div class="mention-item ${i === mentionIdx ? "active" : ""}" onmousedown="event.preventDefault();pickMention(${i})">
+    <div class="avatar sm" style="--c:${x.color}">${esc(x.avatar)}</div><span>${esc(x.name)}</span>
+    <span class="small muted" style="margin-left:auto">${esc(shortModel(x.model))}</span></div>`).join("");
+  pop.style.display = "block";
+}
+function hideMention() { $("mention-pop").style.display = "none"; mentionList = []; mentionIdx = 0; }
+function pickMention(i) {
+  const el = $("input");
+  const pos = el.selectionStart;
+  const before = el.value.slice(0, pos).replace(/@([^\s@]*)$/, "@" + mentionList[i].name + " ");
+  el.value = before + el.value.slice(pos);
+  el.selectionStart = el.selectionEnd = before.length;
+  hideMention(); el.focus(); autoGrow();
 }
 
-function alertInChat(text) {
-  const div = document.createElement("div");
-  div.className = "system";
-  div.textContent = text;
-  document.getElementById("chat").appendChild(div);
-  scrollDown();
+/* =====================================================================
+   右侧面板：群设置 + 成员
+   ===================================================================== */
+let openMemberId = null;
+function togglePanel(force) {
+  const p = $("panel");
+  const open = force ?? !p.classList.contains("open");
+  p.classList.toggle("open", open);
+  if (open) renderPanel();
 }
 
-function renderMessage(msg) {
-  const chat = document.getElementById("chat");
-  if (msg.sender === "system") {
-    const div = document.createElement("div");
-    div.className = "system";
-    div.textContent = "—— 互相评论环节 ——";
-    chat.appendChild(div);
-    scrollDown();
-    return;
-  }
-  const isMe = msg.sender === "user";
-  const member = config.members.find(m => m.id === msg.sender);
-  const name = isMe ? config.userName : (member?.name || "已移除的成员");
-  const color = isMe ? "#576b95" : (member?.color || "#999");
+function renderPanel() {
+  if (!current || !$("panel").classList.contains("open")) return;
+  const g = current;
+  const totalCost = g.messages.reduce((s, m) => s + (m.cost || 0), 0);
+  $("panel-body").innerHTML = `
+    <div class="field"><label>群名</label><input type="text" id="group-name" value="${esc(g.name)}"
+      oninput="current.name=this.value||'未命名的群';saveGroup(current,false);renderHeader();renderSidebar()"></div>
+    <div class="field"><label>发言模式</label>
+      <div class="segmented">${Object.entries(MODES).map(([k, v]) =>
+        `<button class="${g.mode === k ? "on" : ""}" onclick="setMode('${k}')">${v.label}</button>`).join("")}</div>
+      <div class="mode-desc">${MODES[g.mode]?.desc || ""}</div></div>
+    <div class="small muted" style="margin:0 2px 4px">本群累计花费约 $${totalCost.toFixed(4)} · ${g.messages.length} 条消息</div>
 
-  // 同一个人连发的消息：不重复显示头像和名字，像微信一样贴在一起
-  const idx = messages.indexOf(msg);
-  const prev = idx > 0 ? messages[idx - 1] : null;
-  const cont = prev && prev.sender === msg.sender && !msg.error;
-  const row = document.createElement("div");
-  row.className = "row" + (isMe ? " me" : "") + (cont ? " cont" : "");
-  row.innerHTML = `
-    <div class="avatar" style="background:${color}">${escapeHtml(name.slice(0, 1))}</div>
-    <div class="body">
-      <div class="name">${escapeHtml(name)}${member && !isMe ? ` · <span class="small">${escapeHtml(member.model)}</span>` : ""}</div>
-      <div class="bubble${msg.error ? " error" : ""}">${isMe ? escapeHtml(msg.text).replace(/\n/g, "<br>") : renderMarkdown(msg.text)}</div>
-      ${msg.cost != null ? `<div class="meta">花费 ≈ $${Number(msg.cost).toFixed(4)}</div>` : ""}
+    <div class="section-title">群成员 · ${g.members.length}</div>
+    <div id="member-list">${g.members.map(memberCardHtml).join("")}</div>
+    <button class="btn" style="width:100%;margin-top:4px" onclick="addMember()">＋ 拉一个新成员进群</button>
+
+    <div class="section-title">其他</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn small" onclick="clearGroup()">清空聊天记录</button>
+      <button class="btn small danger" onclick="deleteGroup()">删除这个群</button>
     </div>`;
-  chat.appendChild(row);
-  scrollDown();
 }
 
-function showTyping(member) {
-  const row = document.createElement("div");
-  row.className = "row";
-  row.innerHTML = `
-    <div class="avatar" style="background:${member.color}">${escapeHtml(member.name.slice(0, 1))}</div>
-    <div class="body"><div class="name">${escapeHtml(member.name)}</div>
-    <div class="bubble typing">正在输入</div></div>`;
-  document.getElementById("chat").appendChild(row);
-  scrollDown();
-  return row;
+function memberCardHtml(m) {
+  const open = openMemberId === m.id;
+  const info = modelInfo(m.model);
+  return `<div class="member-card ${open ? "open" : ""} ${m.enabled ? "" : "disabled"}" id="mc-${m.id}">
+    <div class="mc-head" onclick="toggleMember('${m.id}')">
+      <div class="avatar" style="--c:${m.color}">${esc(m.avatar)}</div>
+      <div class="info"><div class="n">${esc(m.name)}</div>
+        <div class="m">${esc(shortModel(m.model))}${m.model && canSeeImages(m.model) && info ? '<span class="tag">可看图</span>' : ""}</div></div>
+      <label class="switch" onclick="event.stopPropagation()" title="在群里 / 暂时移出">
+        <input type="checkbox" ${m.enabled ? "checked" : ""} onchange="updMember('${m.id}','enabled',this.checked)"><span></span></label>
+    </div>
+    ${open ? `<div class="mc-edit">
+      <div class="row2" style="margin-top:10px">
+        <div class="field narrow"><label>头像</label><input type="text" maxlength="4" value="${esc(m.avatar)}" oninput="updMember('${m.id}','avatar',this.value||'?')"></div>
+        <div class="field"><label>名字（@ 时用这个）</label><input type="text" value="${esc(m.name)}" oninput="updMember('${m.id}','name',this.value.trim()||'AI')"></div>
+      </div>
+      <div class="field"><label>颜色</label><div class="swatches">
+        ${PALETTE.map(c => `<button class="swatch ${c === m.color ? "on" : ""}" style="background:${c}" onclick="updMember('${m.id}','color','${c}',true)"></button>`).join("")}
+      </div></div>
+      <div class="field"><label>模型（输入关键字搜索：claude、gpt、gemini、deepseek、qwen…）</label>
+        <input type="text" list="model-options" value="${esc(m.model)}" placeholder="例如 anthropic/…"
+          onchange="updMember('${m.id}','model',this.value.trim(),true)">
+        <div class="model-info">${info ? esc(info.name || "") + (canSeeImages(m.model) ? " · 可以看图片" : " · 看不了图片") + esc(priceText(info)) : (m.model ? "列表里没找到这个模型，确认一下名字" : "")}</div></div>
+      <div class="field"><label>人设</label>
+        <select onchange="if(this.value){updMember('${m.id}','persona',PERSONA_TEMPLATES[this.value],true)}">
+          <option value="">套用一个人设模板…</option>
+          ${Object.keys(PERSONA_TEMPLATES).map(k => `<option value="${k}">${k}</option>`).join("")}
+        </select>
+        <textarea style="margin-top:6px" rows="5" oninput="updMember('${m.id}','persona',this.value)">${esc(m.persona || "")}</textarea></div>
+      <button class="btn small danger" onclick="removeMember('${m.id}')">把 ${esc(m.name)} 移出群聊</button>
+    </div>` : ""}
+  </div>`;
 }
 
-function renderAll() {
-  document.getElementById("chat").innerHTML = "";
-  messages.forEach(renderMessage);
-  if (!messages.length) alertInChat("群聊已创建。说句话试试，或者点右上角 ⚙️ 先填 API Key。");
+function toggleMember(id) { openMemberId = openMemberId === id ? null : id; renderPanel(); }
+function setMode(k) { current.mode = k; saveGroup(current, false); renderPanel(); renderHeader(); }
+
+let saveTimer = null;
+function updMember(id, key, value, rerender) {
+  const m = current.members.find(x => x.id === id);
+  if (!m) return;
+  m[key] = value;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveGroup(current, false), 400);
+  renderHeader(); renderSidebar();
+  if (rerender || key === "enabled") renderPanel();
+  else {   // 正在打字的时候只刷新卡片头部，不打断输入
+    const head = document.querySelector(`#mc-${id} .mc-head`);
+    if (head) {
+      head.querySelector(".avatar").textContent = m.avatar;
+      head.querySelector(".n").textContent = m.name;
+    }
+  }
+}
+function addMember() {
+  const used = current.members.map(m => m.color);
+  const m = { id: uid("m_"), name: "新成员", avatar: "🙂", color: PALETTE.find(c => !used.includes(c)) || PALETTE[0],
+              enabled: true, model: current.members.find(x => x.model)?.model || "", persona: "" };
+  current.members.push(m);
+  openMemberId = m.id;
+  saveGroup(current, false);
+  renderPanel(); renderHeader(); renderSidebar();
+}
+async function removeMember(id) {
+  const m = current.members.find(x => x.id === id);
+  if (!await confirmBox(`把 ${esc(m.name)} 移出群聊？（只是想暂时不让它说话的话，关掉右边的开关就行）`, "移出")) return;
+  current.members = current.members.filter(x => x.id !== id);
+  saveGroup(current, false);
+  renderPanel(); renderHeader(); renderSidebar();
 }
 
-function renderMembersBar() {
-  const bar = document.getElementById("members-bar");
-  bar.innerHTML = "";
-  config.members.forEach(m => {
-    const chip = document.createElement("span");
-    chip.className = "chip" + (m.enabled ? "" : " off");
-    chip.style.borderColor = m.color;
-    chip.style.color = m.color;
-    chip.textContent = m.name + (m.model ? "" : "（未选模型）");
-    chip.title = m.model || "去设置里选择模型";
-    chip.onclick = () => { m.enabled = !m.enabled; save("aigc-config", config); renderMembersBar(); };
-    bar.appendChild(chip);
+/* =====================================================================
+   设置弹窗、主题、侧边栏
+   ===================================================================== */
+let draftTheme = "auto";
+function openSettings() {
+  $("set-key").value = config.apiKey;
+  $("set-key").type = "password";
+  $("set-username").value = config.userName;
+  $("set-avatar").value = config.userAvatar;
+  draftTheme = config.theme;
+  paintThemeButtons();
+  $("settings-ov").classList.add("show");
+}
+function closeSettings() { $("settings-ov").classList.remove("show"); applyTheme(); }
+function saveSettings() {
+  config.apiKey = $("set-key").value.trim();
+  config.userName = $("set-username").value.trim() || "我";
+  config.userAvatar = $("set-avatar").value.trim() || "🙂";
+  config.theme = draftTheme;
+  lsSave("aigc-config", config);
+  closeSettings();
+  renderMe(); renderHeader(); renderChat();
+}
+function toggleKeyVisible() { const k = $("set-key"); k.type = k.type === "password" ? "text" : "password"; }
+function paintThemeButtons() {
+  document.querySelectorAll("#set-theme button").forEach(b => b.classList.toggle("on", b.dataset.v === draftTheme));
+}
+document.querySelectorAll("#set-theme button").forEach(b => b.onclick = () => {
+  draftTheme = b.dataset.v; paintThemeButtons(); applyTheme(draftTheme);
+});
+function applyTheme(t = config.theme) {
+  const dark = t === "dark" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => applyTheme());
+
+function renderMe() {
+  $("me-box").innerHTML = `<div class="avatar sm" style="--c:#07c160">${esc(config.userAvatar)}</div><span>${esc(config.userName)}</span>`;
+}
+function openSidebar() { document.body.classList.add("sidebar-open"); }
+function closeSidebar() { document.body.classList.remove("sidebar-open"); }
+
+/* ---------- 小工具 ---------- */
+function confirmBox(html, okText = "确定") {
+  return new Promise(resolve => {
+    $("confirm-text").innerHTML = html;
+    $("confirm-yes").textContent = okText;
+    const ov = $("confirm-ov");
+    ov.classList.add("show");
+    const done = v => { ov.classList.remove("show"); resolve(v); };
+    $("confirm-yes").onclick = () => done(true);
+    $("confirm-no").onclick = () => done(false);
   });
-  document.getElementById("status").textContent =
-    config.apiKey ? `${activeMembers().length} 个AI在线 · ${{ natural: "自然群聊", parallel: "同时回答", sequential: "轮流发言" }[config.mode] || ""}`
-                  : "未设置 API Key";
 }
-
-function clearChat() {
-  if (busy) return;
-  messages = [];
-  save("aigc-messages", messages);
-  renderAll();
+let toastTimer = null;
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
 }
-
-function scrollDown() {
-  const chat = document.getElementById("chat");
-  chat.scrollTop = chat.scrollHeight;
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
-
-/* 简单的 Markdown 显示：代码块、行内代码、加粗、换行 */
 function renderMarkdown(text) {
-  let html = escapeHtml(text);
+  let html = esc(text);
   html = html.replace(/```[\w-]*\n?([\s\S]*?)```/g, (_, code) => `<pre><code>${code}</code></pre>`);
   html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
   html = html.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
   html = html.replace(/^#{1,6}\s+(.+)$/gm, "<strong>$1</strong>");
-  // 不在 <pre> 里的换行变成 <br>
-  return html.split(/(<pre>[\s\S]*?<\/pre>)/).map(part =>
-    part.startsWith("<pre>") ? part : part.replace(/\n/g, "<br>")).join("");
+  return html.split(/(<pre>[\s\S]*?<\/pre>)/).map(p => p.startsWith("<pre>") ? p : p.replace(/\n/g, "<br>")).join("");
 }
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function fmtSize(n) { return !n ? "" : n < 1024 * 1024 ? Math.ceil(n / 1024) + "KB" : (n / 1024 / 1024).toFixed(1) + "MB"; }
+const pad = n => String(n).padStart(2, "0");
+function shortTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts), now = new Date();
+  if (d.toDateString() === now.toDateString()) return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return "昨天";
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
-
-/* =====================================================================
-   6. 设置弹窗
-   ===================================================================== */
-let draft = null;   // 编辑中的成员列表（点"保存"才生效）
-
-function openSettings() {
-  draft = structuredClone(config.members);
-  document.getElementById("set-key").value = config.apiKey;
-  document.getElementById("set-username").value = config.userName;
-  document.getElementById("set-mode").value = config.mode;
-  renderMemberEditor();
-  document.getElementById("settings-bg").style.display = "flex";
-}
-
-function closeSettings() {
-  draft = null;
-  document.getElementById("settings-bg").style.display = "none";
-}
-
-function renderMemberEditor() {
-  const list = document.getElementById("member-list");
-  list.innerHTML = "";
-  draft.forEach((m, i) => {
-    const card = document.createElement("div");
-    card.className = "member-card";
-    card.innerHTML = `
-      <div class="top">
-        <input type="checkbox" ${m.enabled ? "checked" : ""} title="是否在群里">
-        <input type="color" value="${m.color}">
-        <input type="text" class="f-name" value="${escapeHtml(m.name)}" placeholder="名字">
-        <button title="删除">✕</button>
-      </div>
-      <label>模型（可以输入关键字搜索，例如 claude、gpt、gemini、deepseek、qwen）</label>
-      <input type="text" class="f-model" list="model-options" value="${escapeHtml(m.model)}" placeholder="例如 anthropic/...">
-      <label>性格 / 角色设定</label>
-      <textarea rows="2" class="f-persona">${escapeHtml(m.persona || "")}</textarea>`;
-    const [chk, color] = card.querySelectorAll(".top input");
-    chk.onchange = () => m.enabled = chk.checked;
-    color.oninput = () => m.color = color.value;
-    card.querySelector(".f-name").oninput = e => m.name = e.target.value.trim() || "AI";
-    card.querySelector(".f-model").oninput = e => m.model = e.target.value.trim();
-    card.querySelector(".f-persona").oninput = e => m.persona = e.target.value;
-    card.querySelector(".top button").onclick = () => { draft.splice(i, 1); renderMemberEditor(); };
-    list.appendChild(card);
-  });
-}
-
-function resetPersonas() {
-  draft.forEach(m => {
-    const def = DEFAULT_MEMBERS.find(d => d.id === m.id);
-    if (def) m.persona = def.persona;
-  });
-  renderMemberEditor();
-}
-
-function addMember() {
-  const colors = ["#e67e22", "#16a085", "#8e44ad", "#c0392b", "#2c3e50", "#d35400"];
-  draft.push({ id: "m" + Date.now(), name: "新成员", color: colors[draft.length % colors.length],
-               enabled: true, model: "", persona: "" });
-  renderMemberEditor();
-}
-
-function saveSettings() {
-  config.apiKey = document.getElementById("set-key").value.trim();
-  config.userName = document.getElementById("set-username").value.trim() || "我";
-  config.mode = document.getElementById("set-mode").value;
-  config.members = draft;
-  draft = null;
-  autoPickModels(config.members);
-  save("aigc-config", config);
-  closeSettings();
-  renderMembersBar();
-  renderAll();
+function longTime(ts) {
+  const d = new Date(ts), s = shortTime(ts), hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return s.includes(":") ? hm : s === "昨天" ? `昨天 ${hm}` : `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
 }
 
 /* =====================================================================
-   7. 启动
+   输入框事件
    ===================================================================== */
-const inputEl = document.getElementById("input");
-function autoGrow() { inputEl.style.height = "auto"; inputEl.style.height = inputEl.scrollHeight + "px"; }
-inputEl.addEventListener("input", autoGrow);
+const inputEl = $("input");
+function autoGrow() { inputEl.style.height = "auto"; inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + "px"; }
+const touchDevice = matchMedia("(pointer: coarse)").matches;
+inputEl.addEventListener("input", () => { autoGrow(); checkMention(); });
+inputEl.addEventListener("click", checkMention);
+inputEl.addEventListener("blur", () => setTimeout(hideMention, 150));
 inputEl.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  if (mentionList.length && $("mention-pop").style.display === "block") {
+    if (e.key === "ArrowDown") { e.preventDefault(); mentionIdx = (mentionIdx + 1) % mentionList.length; return checkMention(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); mentionIdx = (mentionIdx - 1 + mentionList.length) % mentionList.length; return checkMention(); }
+    if ((e.key === "Enter" || e.key === "Tab") && !e.isComposing) { e.preventDefault(); return pickMention(mentionIdx); }
+    if (e.key === "Escape") return hideMention();
+  }
+  // 手机上回车是换行，用发送按钮发；电脑上 Enter 发送、Shift+Enter 换行
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && !touchDevice) { e.preventDefault(); send(); }
+});
+inputEl.addEventListener("paste", e => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (files.length) { e.preventDefault(); addFiles(files); }
+});
+$("file-input").addEventListener("change", e => { addFiles([...e.target.files]); e.target.value = ""; });
+
+// 拖文件到窗口任何地方都可以
+let dragDepth = 0;
+window.addEventListener("dragenter", e => { if (e.dataTransfer?.types?.includes("Files")) { dragDepth++; $("composer").classList.add("dragover"); } });
+window.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("composer").classList.remove("dragover"); } });
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => {
+  e.preventDefault(); dragDepth = 0; $("composer").classList.remove("dragover");
+  if (e.dataTransfer?.files?.length) addFiles([...e.dataTransfer.files]);
 });
 
-renderMembersBar();
-renderAll();
-loadModels();
-if (!config.apiKey) openSettings();
+$("chat").addEventListener("scroll", () => { if (isNearBottom()) $("new-pill").style.display = "none"; });
+document.addEventListener("click", e => {
+  if (!e.target.closest(".msg")) document.querySelectorAll(".msg.show-actions").forEach(x => x.classList.remove("show-actions"));
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  $("lightbox").classList.remove("show");
+  if ($("settings-ov").classList.contains("show")) closeSettings();
+  else if ($("panel").classList.contains("open")) togglePanel(false);
+  closeSidebar();
+});
+
+init();
 </script>
 </body>
 </html>
