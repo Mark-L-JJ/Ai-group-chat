@@ -168,10 +168,10 @@ input, textarea, select { font: inherit; color: var(--text); }
 .node {
   position: absolute; transform: translate(-50%, -50%); width: 210px; text-align: left; border-radius: 14px; padding: 10px 13px;
   background: color-mix(in srgb, var(--c) 10%, var(--bg)); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
-  color: var(--text); font-size: 14px; line-height: 1.5; animation: drift 7s ease-in-out infinite alternate;
+  color: var(--text); font-size: 14px; line-height: 1.5; animation: drift 7s ease-in-out infinite alternate; will-change: translate;
 }
 .node:hover { z-index: 3; border-color: var(--c); }
-.node.inner { box-shadow: 0 0 28px color-mix(in srgb, var(--c) calc(var(--glow) * 40%), transparent); font-size: 15px; }
+.node.inner { box-shadow: 0 0 18px color-mix(in srgb, var(--c) calc(var(--glow) * 40%), transparent); font-size: 15px; }
 .node.outer { width: 170px; font-size: 12px; opacity: .35; background: transparent; border-color: var(--line-2); }
 .node.harsh { background: var(--harsh-bg); border-color: var(--harsh-line); }
 .node .nh { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin-bottom: 2px; }
@@ -179,7 +179,8 @@ input, textarea, select { font: inherit; color: var(--text); }
 .node .nh span { color: var(--muted); white-space: nowrap; }
 .node .nh .hs { color: var(--harsh); }
 .node .nh .st { color: var(--star); }
-@keyframes drift { from { margin-top: -3px; } to { margin-top: 3px; } }
+@keyframes drift { from { translate: 0 -3px; } to { translate: 0 3px; } }   /* 只用 translate，显卡直接挪，不用重新排版 */
+@media (prefers-reduced-motion: reduce) { .node { animation: none; } }
 .legend { position: absolute; left: 22px; bottom: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .legend div { display: flex; align-items: center; gap: 8px; }
 .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -944,7 +945,7 @@ function addMessage(g, msg) {
       const nearBottom = isNearBottom();
       $("messages").appendChild(messageEl(msg, prev));
       if (nearBottom || msg.sender === "user") scrollToBottom(); else $("new-pill").style.display = "block";
-    } else renderSandbox();
+    } else scheduleSandbox();
     // 圆桌：AI @了谁 / 引用了谁，就从它连一条线过去
     if (msg.sender !== "user" && msg.sender !== "system") {
       const t = targetOf(msg, g);
@@ -1035,6 +1036,8 @@ function sandboxPoints(g = current) {
   return points.sort((a, b) => b.score - a.score || b.idx - a.idx).slice(0, 12);
 }
 
+let sandboxTimer = null;
+function scheduleSandbox() { clearTimeout(sandboxTimer); sandboxTimer = setTimeout(() => view === "sandbox" && renderSandbox(), 400); }
 function renderSandbox() {
   const box = $("sandbox");
   const pts = sandboxPoints();

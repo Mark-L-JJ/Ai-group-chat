@@ -1,6 +1,6 @@
 [package]
 name = "ai-group-chat"
-version = "0.3.0"
+version = "0.3.1"
 description = "AI group chat: Claude, ChatGPT and more in one chat"
 edition = "2021"
 
