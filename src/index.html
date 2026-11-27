@@ -170,7 +170,7 @@ input, textarea, select { font: inherit; color: var(--text); }
   background: color-mix(in srgb, var(--c) 10%, var(--bg)); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
   color: var(--text); font-size: 14px; line-height: 1.5; animation: drift 7s ease-in-out infinite alternate; will-change: translate;
 }
-.node:hover { z-index: 3; border-color: var(--c); }
+.node:hover, .node:focus-visible { z-index: 3; border-color: var(--c); animation-play-state: paused; }   /* 鼠标放上去就停下，方便看和点 */
 .node.inner { box-shadow: 0 0 18px color-mix(in srgb, var(--c) calc(var(--glow) * 40%), transparent); font-size: 15px; }
 .node.outer { width: 170px; font-size: 12px; opacity: .35; background: transparent; border-color: var(--line-2); }
 .node.harsh { background: var(--harsh-bg); border-color: var(--harsh-line); }
