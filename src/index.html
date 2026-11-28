@@ -3,178 +3,208 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI 群聊</title>
+<title>复调</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet">
 <style>
 /* =====================================================================
-   外观：方案 H「星图圆桌」——深色为主，也有浅色版
-   所有颜色都是变量，切换主题只换一组变量
+   复调 · 音乐厅
+   一次群聊 = 一场演出：舞台上一次只演一句，合唱席上谁开口谁发光，
+   左边的乐谱是完整记录，你在最下面的指挥台说话。
    ===================================================================== */
 :root, html[data-theme="dark"] {
-  --bg: #0a0b10; --panel: #0f1017; --card: #13141c; --card-2: #1b1d2a; --line: #1c1e28; --line-2: #2a2c3c;
-  --text: #e8e8f0; --text-2: #d4d5e0; --muted: #a4a6b8; --faint: #6f7286;
-  --me-bg: #e8e8f0; --me-text: #0a0b10; --accent: #c4b5fd; --accent-text: #0a0b10;
+  --bg: #0b0a0c; --panel: #0f0e11; --card: #141215; --card-2: #1b181c; --line: #1f1c1f; --line-2: #2f2a2e;
+  --text: #ece6dc; --text-2: #cfc8bd; --muted: #a79f93; --faint: #6f685f;
+  --me-bg: #ece6dc; --me-text: #0b0a0c; --accent: #e9d8b4; --accent-text: #0b0a0c;
   --harsh: #f9a8d4; --harsh-bg: #1a1219; --harsh-line: #5a2d4f; --star: #fcd34d; --danger: #fb7185;
-  --glow: .5; --shadow: 0 16px 50px rgba(0,0,0,.55);
-  --rail-w: 72px; --board-w: 340px; --panel-w: 370px;
+  --glow: .5; --shadow: 0 16px 50px rgba(0,0,0,.55); --spot: .08;
+  --score-w: 300px; --board-w: 340px; --panel-w: 370px;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", serif; --ital: "Cormorant Garamond", Georgia, serif;
 }
 html[data-theme="light"] {
-  --bg: #f6f6fa; --panel: #ffffff; --card: #ffffff; --card-2: #eeedf6; --line: #e6e5ee; --line-2: #d9d8e4;
-  --text: #16151f; --text-2: #2b2a38; --muted: #646377; --faint: #8e8da0;
-  --me-bg: #16151f; --me-text: #f6f6fa; --accent: #6d5bd0; --accent-text: #ffffff;
-  --harsh: #be185d; --harsh-bg: #fdf0f6; --harsh-line: #f3c2da; --star: #d97706; --danger: #e11d48;
-  --glow: .25; --shadow: 0 16px 50px rgba(30,25,70,.14);
+  --bg: #f7f3ec; --panel: #fbf8f3; --card: #ffffff; --card-2: #efe9df; --line: #e7dfd2; --line-2: #d8cebf;
+  --text: #1d1a17; --text-2: #3a352f; --muted: #6f675c; --faint: #9a9184;
+  --me-bg: #1d1a17; --me-text: #f7f3ec; --accent: #8a6a2f; --accent-text: #ffffff;
+  --harsh: #be185d; --harsh-bg: #fdf0f6; --harsh-line: #f3c2da; --star: #b45309; --danger: #e11d48;
+  --glow: .3; --shadow: 0 16px 50px rgba(60,40,10,.14); --spot: .12;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body {
-  margin: 0; display: flex; overflow: hidden; background: var(--bg); color: var(--text);
-  font: 15px/1.65 Sora, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-}
+body { margin: 0; display: flex; overflow: hidden; background: var(--bg); color: var(--text); font: 14px/1.6 Inter, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 button { font: inherit; color: inherit; cursor: pointer; }
 input, textarea, select { font: inherit; color: var(--text); }
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
+.it { font-family: var(--ital); font-style: italic; font-size: 1.12em; }
 [hidden] { display: none !important; }
 
-.btn { border: 1px solid var(--line-2); background: transparent; border-radius: 12px; padding: 8px 14px; color: var(--text-2); }
-.btn:hover { background: var(--card-2); }
+.btn { border: 1px solid var(--line-2); background: transparent; border-radius: 999px; padding: 7px 16px; color: var(--text-2); }
+.btn:hover { border-color: var(--muted); color: var(--text); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-.btn.primary:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--danger); }
-.btn.small { padding: 5px 12px; font-size: 13px; border-radius: 10px; }
-.pill { border: 1px solid var(--line-2); background: var(--card-2); border-radius: 999px; padding: 6px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
-.pill:hover { border-color: var(--accent); }
-.pill.on { border-color: var(--accent); color: var(--accent); }
-.icon-btn { width: 36px; height: 36px; border: none; background: transparent; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: var(--muted); flex-shrink: 0; }
+.btn.small { padding: 5px 12px; font-size: 13px; }
+.pill { border: 1px solid var(--line-2); background: transparent; border-radius: 999px; padding: 6px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+.pill:hover, .pill.on { border-color: var(--accent); color: var(--accent); }
+.icon-btn { width: 34px; height: 34px; border: none; background: transparent; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: var(--muted); flex-shrink: 0; }
 .icon-btn:hover { background: var(--card-2); color: var(--text); }
-.icon-btn svg { width: 18px; height: 18px; }
-.seg { display: flex; background: var(--card); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px; font-size: 13px; flex-shrink: 0; }
-.seg button { border: none; background: transparent; border-radius: 999px; padding: 4px 14px; color: var(--muted); }
-.seg button.on { background: var(--me-bg); color: var(--me-text); font-weight: 600; }
+.icon-btn svg { width: 17px; height: 17px; }
+.seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 999px; font-size: 13px; flex-shrink: 0; }
+.seg button { border: none; background: transparent; border-radius: 999px; padding: 4px 13px; color: var(--muted); white-space: nowrap; }
+.seg button.on { background: var(--me-bg); color: var(--me-text); }
+.seg button .it { margin-right: 3px; }
 
-/* ---------- 头像（圆形 + 成员颜色描边） ---------- */
-.avatar {
-  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 13px; color: var(--c, #999); border: 1.5px solid var(--c, #999);
-  background: color-mix(in srgb, var(--c, #999) 14%, var(--bg)); user-select: none; transition: box-shadow .3s;
-}
+.avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-weight: 700; font-size: 13px; color: var(--c, #999); border: 1.5px solid var(--c, #999); background: var(--bg); user-select: none; }
 .avatar.sm { width: 28px; height: 28px; font-size: 11px; }
-.avatar.speaking { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 15%, transparent), 0 0 22px color-mix(in srgb, var(--c) calc(var(--glow) * 100%), transparent); }
 
 /* =====================================================================
-   左侧：群图标栏
+   左：乐谱（完整记录）+ 演出列表
    ===================================================================== */
-#rail { width: var(--rail-w); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 0; flex-shrink: 0; }
-#group-rail { display: flex; flex-direction: column; gap: 12px; align-items: center; overflow-y: auto; flex: 0 1 auto; padding: 4px; }
-.rail-item {
-  position: relative; width: 44px; height: 44px; border-radius: 14px; background: var(--card); border: 1px solid transparent;
-  display: flex; align-items: center; justify-content: center; color: var(--muted); font-weight: 700; flex-shrink: 0;
-}
-.rail-item:hover { color: var(--text); background: var(--card-2); }
-.rail-item.active { background: var(--card-2); border-color: color-mix(in srgb, var(--accent) 45%, var(--line-2)); color: var(--text); }
-.rail-item .dot { position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%; background: #f472b6; border: 2px solid var(--bg); }
-.rail-item.busy::after { content: ""; position: absolute; inset: -4px; border-radius: 17px; border: 1.5px solid var(--accent); opacity: .5; animation: pulse 1.6s infinite; }
-@keyframes pulse { 50% { opacity: .1; } }
-.rail-add { border: 1px dashed var(--line-2) !important; background: transparent !important; }
-#me-btn { margin-top: auto; width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--me-bg); color: var(--me-text); font-weight: 700; font-size: 13px; padding: 0; }
+#score { width: var(--score-w); border-right: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; min-height: 0; background: var(--bg); z-index: 20; }
+.score-head { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 22px 12px; }
+.score-head b { font-family: var(--serif); font-size: 18px; letter-spacing: 2px; }
+#chat { flex: 1; overflow-y: auto; padding: 0 12px 16px; position: relative; }
+.mov { font-size: 11px; letter-spacing: 2px; color: var(--faint); padding: 14px 10px 6px; display: flex; align-items: center; gap: 8px; }
+.mov::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.s-item { position: relative; display: block; width: 100%; text-align: left; border: none; background: transparent; padding: 7px 10px; border-radius: 10px; color: inherit; }
+.s-item:hover { background: var(--card); }
+.s-item.on { background: var(--card-2); }
+.s-item.cont { padding-top: 0; }
+.s-item.cont .s-who { display: none; }
+.s-who { display: flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 1.2px; font-weight: 600; color: var(--c); }
+.s-who i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); display: inline-block; }
+.s-who .star { color: var(--star); font-style: normal; letter-spacing: 0; }
+.s-text { font-size: 13px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.s-item.me .s-text { color: var(--text); }
+.s-item.err .s-text { color: var(--danger); }
+.s-atts { font-size: 12px; color: var(--muted); }
+.s-actions { position: absolute; right: 6px; top: 4px; display: none; gap: 1px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 1px; z-index: 2; }
+.s-item:hover .s-actions, .s-item.show-actions .s-actions { display: flex; }
+.s-actions span { font-size: 11px; padding: 1px 7px; border-radius: 999px; color: var(--text-2); cursor: pointer; }
+.s-actions span:hover { background: var(--line-2); }
+#new-pill { position: sticky; bottom: 6px; left: 0; margin: 6px auto 0; display: none; background: var(--accent); color: var(--accent-text); border: none; border-radius: 999px; padding: 4px 14px; font-size: 12px; }
+.shows { border-top: 1px solid var(--line); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; max-height: 32vh; overflow-y: auto; }
+.show { display: flex; align-items: center; gap: 8px; border: none; background: transparent; text-align: left; padding: 6px 8px; border-radius: 8px; color: var(--muted); font-size: 13px; }
+.show:hover { background: var(--card); color: var(--text); }
+.show.on { color: var(--text); }
+.show span:first-child { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.show .dot { width: 7px; height: 7px; border-radius: 50%; background: #f472b6; }
+.show .live { font-size: 11px; color: var(--accent); }
+.shows-foot { display: flex; align-items: center; gap: 8px; padding: 4px 8px 0; }
+.shows-foot .new { flex: 1; border: none; background: none; text-align: left; color: var(--muted); font-size: 13px; padding: 4px 0; }
+.shows-foot .new:hover { color: var(--text); }
+#me-btn { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--me-bg); color: var(--me-text); font-weight: 700; font-size: 12px; padding: 0; }
 
 /* =====================================================================
-   中间
+   中：舞台
    ===================================================================== */
-#main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
-#chat-head { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-shrink: 0; flex-wrap: wrap; }
-.head-title { min-width: 120px; max-width: 260px; }
-.head-title .t { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.head-title .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#roundtable { flex: 1; display: flex; justify-content: center; gap: 20px; position: relative; cursor: pointer; min-width: 120px; }
-.rt-seat { display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; z-index: 1; }
-.rt-seat span { font-size: 10px; color: var(--muted); max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rt-seat.speaking span { color: var(--c); }
-.rt-seat.off { opacity: .35; }
-.rt-link { position: absolute; height: 2px; border-radius: 2px; transform-origin: 0 50%; opacity: 0; pointer-events: none; z-index: 0; transition: opacity .4s; }
-.rt-link.show { opacity: .85; }
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; overflow: hidden; }
+#spot { position: absolute; top: 46%; width: 640px; height: 640px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--sc, #ece6dc); opacity: var(--spot); filter: blur(100px); transition: left 1.2s ease, background-color 1.2s ease; pointer-events: none; left: 50%; }
+#beam { position: absolute; bottom: 190px; width: 1px; height: 42%; transform: translateX(-50%); background: linear-gradient(to top, color-mix(in srgb, var(--sc, #ece6dc) 65%, transparent), transparent); transition: left 1.2s ease, opacity .6s; pointer-events: none; left: 50%; opacity: 0; }
+#beam.on { opacity: 1; }
+#chat-head { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 20px 32px 0; z-index: 2; }
+#score-btn { display: none; }
+.head-title { flex: 1; min-width: 180px; }
+.head-title .t { font-family: var(--serif); font-weight: 700; font-size: 20px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.head-title .s { font-size: 12px; color: var(--muted); letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-#views { flex: 1; position: relative; min-height: 0; display: flex; }
-#chat { flex: 1; overflow-y: auto; padding: 18px 24px 10px; }
-#messages, #typing-area { max-width: 700px; margin: 0 auto; }
-.fold-bar {
-  display: flex; width: 100%; align-items: center; gap: 10px; border: 1px dashed var(--line-2); background: transparent; color: var(--muted);
-  border-radius: 12px; padding: 9px 14px; font-size: 13px; text-align: left; margin-bottom: 6px;
-}
-.fold-bar:hover { border-color: var(--accent); }
-.fold-bar span:first-child { flex: 1; }
-.fold-bar b { color: var(--accent); font-weight: 600; }
-.time-sep { text-align: center; font-size: 11px; color: var(--faint); margin: 18px 0 8px; letter-spacing: .5px; }
-.sys-msg { text-align: center; margin: 14px 0; }
-.sys-msg span { border: 1px solid var(--line-2); color: var(--muted); font-size: 12px; padding: 4px 14px; border-radius: 999px; }
-.empty-hint { text-align: center; color: var(--muted); margin-top: 14vh; }
-.empty-hint .big { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+#views { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+#stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.motif { position: relative; width: 100%; max-width: 860px; margin: 0 auto; padding: 26px 32px 0; }
+.motif .label { font-size: 11px; letter-spacing: 3px; color: var(--muted); }
+.motif .q { font-family: var(--serif); font-size: 19px; color: var(--text-2); margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.motif .thumbs { display: flex; gap: 6px; margin-top: 6px; }
+.motif .thumbs img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; cursor: zoom-in; border: 1px solid var(--line-2); }
+.motif .thumbs .file-chip { font-size: 12px; padding: 4px 8px; }
+.boards { position: relative; flex: 1; min-height: 220px; width: 100%; max-width: 860px; margin: 0 auto; }
+.layer { position: absolute; left: 32px; right: 32px; top: 50%; transform: translateY(calc(-50% + 26px)); opacity: 0; transition: opacity .8s ease, transform .8s ease; pointer-events: none; max-height: 100%; display: flex; flex-direction: column; }
+.layer.on { opacity: 1; transform: translateY(-50%); pointer-events: auto; }
+.layer.out { transform: translateY(calc(-50% - 26px)); }
+.who { font-size: 12px; letter-spacing: 3px; font-weight: 600; color: var(--c); margin-bottom: 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.who .to { color: var(--muted); letter-spacing: 1px; font-weight: 400; }
+.who .star { color: var(--star); letter-spacing: 0; }
+.verse { font-family: var(--serif); font-weight: 600; letter-spacing: .5px; overflow-y: auto; overflow-wrap: anywhere; min-height: 0; }
+.verse p { margin: 0 0 .35em; }
+.verse.xl { font-size: 40px; line-height: 1.4; }
+.verse.l { font-size: 30px; line-height: 1.5; }
+.verse.m { font-size: 22px; line-height: 1.7; font-weight: 400; }
+.verse.s { font-size: 16px; line-height: 1.85; font-weight: 400; font-family: Inter, "Noto Sans SC", sans-serif; letter-spacing: 0; }
+.verse pre { font-size: 13px; background: var(--card); padding: 10px 12px; border-radius: 10px; overflow-x: auto; font-family: ui-monospace, Consolas, monospace; font-weight: 400; }
+.verse code { font-size: .8em; background: var(--card); padding: 1px 5px; border-radius: 5px; font-family: ui-monospace, Consolas, monospace; }
+.verse pre code { background: none; padding: 0; font-size: inherit; }
+.verse .at { font-weight: 700; }
+.verse.err { color: var(--danger); font-size: 18px; font-weight: 400; }
+.rest { text-align: center; color: var(--muted); }
+.rest .big { font-family: var(--serif); font-size: 26px; color: var(--text); margin-bottom: 8px; }
+.stage-foot { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; max-width: 860px; margin: 0 auto; padding: 0 32px 6px; min-height: 30px; }
+#breath { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+.breath { display: inline-flex; align-items: center; gap: 8px; }
+.bars { display: inline-flex; gap: 3px; align-items: center; height: 16px; }
+.bars i { width: 3px; height: 16px; border-radius: 2px; background: var(--c); transform-origin: bottom; animation: breathe 1.1s ease-in-out infinite; }
+.bars i:nth-child(2) { animation-delay: .15s; } .bars i:nth-child(3) { animation-delay: .3s; } .bars i:nth-child(4) { animation-delay: .45s; }
+@keyframes breathe { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+.nav { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); }
+.nav .latest { border: 1px solid var(--line-2); background: none; border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--accent); }
 
-.msg { display: flex; gap: 14px; margin-top: 16px; position: relative; animation: rise .25s ease-out; }
-@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.msg.cont { margin-top: 3px; }
-.msg .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-top: 9px; flex-shrink: 0; box-shadow: 0 0 10px color-mix(in srgb, var(--c) calc(var(--glow) * 140%), transparent); }
-.msg.cont .dot { visibility: hidden; }
-.msg-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.msg-name { font-size: 12px; font-weight: 600; color: var(--c); display: flex; gap: 6px; align-items: baseline; }
-.msg-name .to { color: var(--muted); font-weight: 400; }
-.msg-name .star { color: var(--star); }
-.msg.cont .msg-name { display: none; }
-.msg .text { color: var(--text); overflow-wrap: anywhere; }
-.msg .text.error { color: var(--danger); font-size: 13px; }
-.msg.long .text { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
-.msg.long.clamped .text-inner { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.more { border: none; background: none; padding: 2px 0 0; color: var(--accent); font-size: 13px; }
-.msg.me { justify-content: flex-end; }
-.msg.me .msg-body { flex: 0 1 auto; max-width: 72%; align-items: flex-end; }
-.msg.me .bubble { background: var(--me-bg); color: var(--me-text); padding: 10px 16px; border-radius: 16px 16px 4px 16px; overflow-wrap: anywhere; }
-.msg.me.cont .bubble { border-radius: 16px 4px 4px 16px; }
-.msg.flash .msg-body { animation: flash 1.6s; }
-@keyframes flash { 0%, 40% { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 12px; } 100% { background: transparent; } }
-.text pre { background: var(--card-2); padding: 9px 12px; border-radius: 10px; overflow-x: auto; margin: 6px 0; font-size: 13px; }
-.text code { background: var(--card-2); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
-.text pre code { background: none; padding: 0; }
-.at { font-weight: 600; }
-.quote { font-size: 13px; opacity: .75; border-left: 2px solid currentColor; padding-left: 8px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.atts { display: flex; flex-wrap: wrap; gap: 6px; }
-.msg.me .atts { justify-content: flex-end; }
-.atts img { max-width: 240px; max-height: 240px; border-radius: 14px; cursor: zoom-in; display: block; border: 1px solid var(--line-2); }
-.file-chip { display: inline-flex; gap: 8px; align-items: center; padding: 9px 13px; border-radius: 12px; background: var(--card); border: 1px solid var(--line-2); font-size: 13px; max-width: 260px; }
+/* 合唱席 */
+#choir { position: relative; height: 128px; flex-shrink: 0; }
+#choir::before { content: ""; position: absolute; left: 50%; top: 22px; width: min(760px, 86%); height: 380px; transform: translateX(-50%); border-radius: 50%; border: 1px solid var(--line); pointer-events: none; }
+.seat { position: absolute; transform: translate(-50%, 0); display: flex; flex-direction: column; align-items: center; gap: 5px; border: none; background: none; padding: 0; transition: transform .8s ease; }
+.seat .avatar { width: 44px; height: 44px; font-size: 16px; opacity: .55; transition: all .8s ease; }
+.seat .lbl { font-size: 11px; letter-spacing: 1px; color: var(--faint); transition: color .8s; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+.seat.off .avatar { opacity: .2; border-style: dashed; }
+.seat.lead { transform: translate(-50%, -12px); }
+.seat.lead .avatar, .seat.sing .avatar { opacity: 1; box-shadow: 0 0 0 7px color-mix(in srgb, var(--c) 14%, transparent), 0 0 40px color-mix(in srgb, var(--c) calc(var(--glow) * 110%), transparent); }
+.seat.lead .lbl, .seat.sing .lbl { color: var(--c); }
+.seat.ping .avatar { animation: ping 1.4s ease-out 1; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 70%, transparent); } 100% { box-shadow: 0 0 0 18px transparent; } }
+.seat:hover .avatar { opacity: 1; }
+
+/* 指挥台 */
+#composer-wrap { position: relative; padding: 0 24px 20px; flex-shrink: 0; z-index: 3; }
+#composer-inner { width: min(620px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.tools-row { display: flex; gap: 18px; font-size: 12px; flex-wrap: wrap; justify-content: center; position: relative; }
+.chip-btn { border: none; background: none; color: var(--muted); padding: 0; font-size: 12px; }
+.chip-btn:hover { color: var(--text); }
+.chip-btn:disabled { opacity: .4; cursor: not-allowed; }
+#solo-pop { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); padding: 5px; min-width: 200px; z-index: 10; }
+#composer { position: relative; width: 100%; background: var(--card); border: 1px solid var(--line-2); border-radius: 26px; padding: 5px 5px 5px 18px; transition: border-color .15s; }
+#composer:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, var(--line-2)); }
+#composer.dragover { border-color: var(--accent); }
+#reply-bar, #pending-atts { display: none; margin: 6px 8px 4px 0; }
+#reply-bar { font-size: 13px; color: var(--muted); align-items: center; gap: 8px; border-left: 2px solid var(--accent); padding: 2px 4px 2px 10px; }
+#reply-bar span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pending-atts { flex-wrap: wrap; gap: 8px; }
+.pending { position: relative; }
+.pending img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; display: block; }
+.pending .x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: var(--text); color: var(--bg); font-size: 11px; line-height: 20px; padding: 0; }
+.compose-row { display: flex; align-items: flex-end; gap: 6px; }
+.podium { font-family: var(--serif); color: var(--accent); font-size: 14px; align-self: center; flex-shrink: 0; }
+#input { flex: 1; resize: none; border: none; outline: none; background: transparent; padding: 9px 4px; min-height: 40px; max-height: 160px; line-height: 1.5; }
+#send-btn { width: 40px; height: 40px; border: none; border-radius: 50%; background: var(--me-bg); color: var(--me-text); display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
+#send-btn svg { width: 16px; height: 16px; }
+#send-btn.stop { background: var(--danger); color: #fff; }
+#mention-pop { position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); padding: 5px; min-width: 230px; display: none; z-index: 10; }
+.mention-item { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 10px; cursor: pointer; font-size: 13px; }
+.mention-item.active, .mention-item:hover { background: var(--line-2); }
+.file-chip { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line-2); font-size: 13px; max-width: 260px; }
 .file-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.msg-actions { position: absolute; top: -16px; display: none; gap: 2px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px; z-index: 2; box-shadow: var(--shadow); }
-.msg:not(.me) .msg-actions { left: 22px; }
-.msg.me .msg-actions { right: 0; }
-.msg:hover .msg-actions, .msg.show-actions .msg-actions { display: flex; }
-.msg-actions button { border: none; background: none; padding: 2px 10px; border-radius: 999px; font-size: 12px; color: var(--text-2); }
-.msg-actions button:hover { background: var(--line-2); }
-.msg-actions .meta { font-size: 11px; color: var(--faint); padding: 2px 6px 2px 10px; align-self: center; white-space: nowrap; }
-.typing-row { display: flex; gap: 14px; align-items: center; margin-top: 14px; font-size: 13px; color: var(--c); }
-.typing-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); animation: pulse 1.2s infinite; box-shadow: 0 0 10px var(--c); }
 
-#new-pill { position: absolute; left: 50%; transform: translateX(-50%); bottom: 110px; display: none; background: var(--accent); color: var(--accent-text); border: none; border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 600; z-index: 5; box-shadow: var(--shadow); }
-
-/* ---------- 沙盘 ---------- */
+/* ---------- 全景（沙盘） ---------- */
 #sandbox { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .sb-field { flex: 1; position: relative; overflow: hidden; min-height: 0; }
-.sb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 20px; border-top: 1px solid var(--line); flex-shrink: 0; }
+.sb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 24px; border-top: 1px solid var(--line); flex-shrink: 0; }
 .sb-guide { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 300px; }
 .sb-guide b { color: var(--text-2); font-weight: 600; }
 .ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 1px solid var(--line); pointer-events: none; }
 .ring.r3 { border-style: dashed; }
 .core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 240px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.core .label { font-size: 11px; letter-spacing: 2px; color: var(--muted); }
-.core .q { font-size: 18px; font-weight: 700; line-height: 1.45; }
+.core .label { font-size: 11px; letter-spacing: 3px; color: var(--muted); }
+.core .q { font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 1.45; }
 .core .sun { width: 8px; height: 8px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 6px color-mix(in srgb, var(--text) 8%, transparent), 0 0 30px color-mix(in srgb, var(--text) 50%, transparent); }
-.node {
-  position: absolute; transform: translate(-50%, -50%); width: 210px; text-align: left; border-radius: 14px; padding: 10px 13px;
-  background: color-mix(in srgb, var(--c) 10%, var(--bg)); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
-  color: var(--text); font-size: 14px; line-height: 1.5; animation: drift 7s ease-in-out infinite alternate; will-change: translate;
-}
-.node:hover, .node:focus-visible { z-index: 3; border-color: var(--c); animation-play-state: paused; }   /* 鼠标放上去就停下，方便看和点 */
+.node { position: absolute; transform: translate(-50%, -50%); width: 210px; text-align: left; border-radius: 14px; padding: 10px 13px; background: color-mix(in srgb, var(--c) 10%, var(--bg)); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); color: var(--text); font-size: 14px; line-height: 1.5; animation: drift 7s ease-in-out infinite alternate; will-change: translate; }
+.node:hover, .node:focus-visible { z-index: 3; border-color: var(--c); animation-play-state: paused; }
 .node.inner { box-shadow: 0 0 18px color-mix(in srgb, var(--c) calc(var(--glow) * 40%), transparent); font-size: 15px; }
 .node.outer { width: 170px; font-size: 12px; opacity: .55; background: transparent; border-color: var(--line-2); }
 .node.harsh { background: var(--harsh-bg); border-color: var(--harsh-line); }
@@ -183,79 +213,53 @@ input, textarea, select { font: inherit; color: var(--text); }
 .node .nh span { color: var(--muted); white-space: nowrap; }
 .node .nh .hs { color: var(--harsh); }
 .node .nh .st { color: var(--star); }
-@keyframes drift { from { translate: 0 -3px; } to { translate: 0 3px; } }   /* 只用 translate，显卡直接挪，不用重新排版 */
-@media (prefers-reduced-motion: reduce) { .node { animation: none; } }
+@keyframes drift { from { translate: 0 -3px; } to { translate: 0 3px; } }
+@media (prefers-reduced-motion: reduce) { .node, .bars i { animation: none; } .layer, #spot, #beam, .seat { transition: none; } }
 .legend { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); min-width: 0; }
 .legend div { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .sandbox-actions { display: flex; gap: 8px; margin-left: auto; }
 
-/* ---------- 输入区 ---------- */
-#composer-wrap { padding: 8px 24px 18px; flex-shrink: 0; }
-#composer-inner { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
-.tools-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip-btn { border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: 12px; }
-.chip-btn:hover { color: var(--text); border-color: var(--muted); }
-.chip-btn:disabled { opacity: .4; cursor: not-allowed; }
-#composer { position: relative; background: var(--card); border: 1px solid var(--line-2); border-radius: 16px; padding: 6px; transition: border-color .15s; }
-#composer:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, var(--line-2)); }
-#composer.dragover { border-color: var(--accent); }
-#reply-bar, #pending-atts { display: none; margin: 4px 8px 6px; }
-#reply-bar { font-size: 13px; color: var(--muted); align-items: center; gap: 8px; border-left: 2px solid var(--accent); padding: 2px 4px 2px 10px; }
-#reply-bar span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#pending-atts { flex-wrap: wrap; gap: 8px; }
-.pending { position: relative; }
-.pending img { width: 60px; height: 60px; object-fit: cover; border-radius: 12px; display: block; }
-.pending .x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: var(--text); color: var(--bg); font-size: 11px; line-height: 20px; padding: 0; }
-.compose-row { display: flex; align-items: flex-end; gap: 6px; }
-#input { flex: 1; resize: none; border: none; outline: none; background: transparent; padding: 8px 8px; min-height: 40px; max-height: 180px; line-height: 1.5; }
-#send-btn { width: 38px; height: 38px; border: none; border-radius: 12px; background: var(--me-bg); color: var(--me-text); display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
-#send-btn svg { width: 16px; height: 16px; }
-#send-btn.stop { background: var(--danger); color: #fff; }
-#mention-pop { position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); padding: 5px; min-width: 230px; display: none; z-index: 10; }
-.mention-item { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 10px; cursor: pointer; }
-.mention-item.active, .mention-item:hover { background: var(--line-2); }
-
 /* =====================================================================
-   右侧：观点板（宽屏时固定在右边，窄屏时浮在上面）
+   右：主题板（观点板）
    ===================================================================== */
-#board { width: var(--board-w); flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
-.board-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px 18px; }
-.board-head b { flex: 1; font-weight: 600; }
-#board-body { flex: 1; overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
-.b-question { font-size: 13px; color: var(--muted); background: var(--card); border-radius: 12px; padding: 10px 12px; }
+#board { width: var(--board-w); flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; z-index: 30; }
+.board-head { display: flex; align-items: center; gap: 8px; padding: 18px 12px 8px 20px; }
+.board-head b { flex: 1; font-family: var(--serif); font-size: 17px; letter-spacing: 1px; }
+#board-body { flex: 1; overflow-y: auto; padding: 4px 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+.b-question { font-family: var(--serif); font-size: 14px; color: var(--text-2); border-bottom: 1px solid var(--line); padding-bottom: 10px; }
 .b-group { display: flex; flex-direction: column; gap: 6px; }
-.b-title { font-size: 12px; font-weight: 600; color: var(--accent); }
+.b-title { font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--accent); }
 .b-group.harsh .b-title { color: var(--harsh); }
-.b-item { text-align: left; background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 11px; font-size: 13px; color: var(--text); width: 100%; }
+.b-item { text-align: left; background: var(--card); border: 1px solid var(--line-2); border-radius: 12px; padding: 8px 11px; font-size: 13px; color: var(--text); width: 100%; }
 .b-item:hover { border-color: var(--muted); }
 .b-item b { color: var(--c); font-weight: 600; margin-right: 4px; }
 .b-group.harsh .b-item { background: var(--harsh-bg); border-color: var(--harsh-line); }
 .b-item.picked { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.b-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.b-note { font-size: 12px; color: var(--muted); line-height: 1.6; }
 .b-link { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-2); background: var(--card); border-radius: 10px; padding: 6px 8px 6px 10px; }
 .b-link span { flex: 1; }
-.b-actions { display: flex; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+.b-actions { display: flex; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid var(--line); }
 .b-actions .btn { flex: 1; font-size: 13px; }
 .b-saved summary { cursor: pointer; font-size: 13px; color: var(--text-2); padding: 4px 0; }
 
 /* =====================================================================
-   群设置面板（从右边滑出来）
+   群设置面板
    ===================================================================== */
 #panel { position: fixed; top: 0; right: 0; bottom: 0; width: var(--panel-w); max-width: 100vw; background: var(--panel); border-left: 1px solid var(--line-2); box-shadow: var(--shadow); transform: translateX(105%); transition: transform .24s ease; z-index: 40; display: flex; flex-direction: column; }
 #panel.open { transform: none; }
-.panel-head { display: flex; align-items: center; padding: 16px 12px 10px 20px; font-weight: 600; font-size: 16px; }
+.panel-head { display: flex; align-items: center; padding: 18px 12px 10px 22px; font-family: var(--serif); font-weight: 700; font-size: 17px; }
 .panel-head span { flex: 1; }
-#panel-body { flex: 1; overflow-y: auto; padding: 0 18px 24px; }
-.section-title { font-size: 11px; font-weight: 600; letter-spacing: 1px; color: var(--faint); margin: 20px 2px 8px; }
+#panel-body { flex: 1; overflow-y: auto; padding: 0 20px 24px; }
+.section-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--faint); margin: 20px 2px 8px; }
 .field { margin-bottom: 12px; }
 .field label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 5px 2px; }
 .field input[type=text], .field input[type=password], .field textarea, .field select { width: 100%; border: 1px solid var(--line-2); background: var(--card); border-radius: 10px; padding: 8px 10px; outline: none; }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 90px; }
-.segmented { display: flex; background: var(--card); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px; gap: 3px; }
+.segmented { display: flex; border: 1px solid var(--line-2); border-radius: 999px; padding: 3px; gap: 3px; }
 .segmented button { flex: 1; border: none; background: transparent; border-radius: 999px; padding: 5px 4px; font-size: 13px; color: var(--muted); }
-.segmented button.on { background: var(--me-bg); color: var(--me-text); font-weight: 600; }
+.segmented button.on { background: var(--me-bg); color: var(--me-text); }
 .mode-desc { font-size: 12px; color: var(--muted); margin: 6px 2px 0; }
 .member-card { border: 1px solid var(--line-2); border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
 .member-card.disabled .mc-head { opacity: .45; }
@@ -281,98 +285,123 @@ input, textarea, select { font: inherit; color: var(--text); }
 .switch input:checked + span { background: var(--accent); }
 .switch input:checked + span::before { transform: translateX(18px); }
 
-/* 弹窗、提示 */
-.overlay { position: fixed; inset: 0; background: rgba(5, 5, 12, .6); z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; }
+.overlay { position: fixed; inset: 0; background: rgba(5, 4, 6, .62); z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; }
 .overlay.show { display: flex; }
-.modal { background: var(--panel); border: 1px solid var(--line-2); border-radius: 20px; width: min(480px, 100%); max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: var(--shadow); }
-.modal h2 { margin: 0 0 14px; font-size: 18px; }
+.modal { background: var(--panel); border: 1px solid var(--line-2); border-radius: 20px; width: min(480px, 100%); max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: var(--shadow); }
+.modal h2 { margin: 0 0 16px; font-family: var(--serif); font-size: 20px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .key-row { display: flex; gap: 6px; }
 .key-row input { flex: 1; }
 #lightbox img { max-width: 94vw; max-height: 90vh; border-radius: 14px; }
-#toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%) translateY(-90px); background: var(--me-bg); color: var(--me-text); padding: 8px 16px; border-radius: 999px; font-size: 14px; z-index: 60; transition: transform .25s; max-width: 90vw; }
+#scrim { position: fixed; inset: 0; background: rgba(5,4,6,.45); z-index: 15; display: none; }
+#toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%) translateY(-90px); background: var(--me-bg); color: var(--me-text); padding: 8px 18px; border-radius: 999px; font-size: 14px; z-index: 60; transition: transform .25s; max-width: 90vw; }
 #toast.show { transform: translateX(-50%) translateY(0); }
 
 /* =====================================================================
    窄屏
    ===================================================================== */
 @media (max-width: 1100px) {
-  #board { position: fixed; top: 0; right: 0; bottom: 0; z-index: 35; box-shadow: var(--shadow); max-width: 100vw; }
+  #board { position: fixed; top: 0; right: 0; bottom: 0; box-shadow: var(--shadow); max-width: 100vw; }
 }
-@media (max-width: 760px) {
-  #rail { width: 56px; padding: 12px 0; gap: 10px; }
-  .rail-item { width: 38px; height: 38px; border-radius: 12px; font-size: 13px; }
-  #chat-head { padding: 10px 12px; gap: 8px; }
-  .head-title { max-width: 150px; min-width: 0; flex: 1; }
-  #roundtable { display: none; }
-  #board-btn .lbl { display: none; }
-  #chat { padding: 12px 12px 6px; }
-  #composer-wrap { padding: 6px 10px calc(10px + env(safe-area-inset-bottom)); }
-  .msg.me .msg-body { max-width: 85%; }
+@media (max-width: 860px) {
+  #score { position: fixed; top: 0; bottom: 0; left: 0; transform: translateX(-105%); transition: transform .22s; box-shadow: var(--shadow); max-width: 86vw; }
+  body.score-open #score { transform: none; }
+  body.score-open #scrim { display: block; }
+  #score-btn { display: inline-flex; }
+  #chat-head { padding: 12px 12px 0; gap: 8px; }
+  .head-title { min-width: 0; flex: 1 1 50%; order: 1; }
+  #score-btn { order: 0; } #more-btn { order: 2; }
+  #tempo-seg { order: 3; } #view-seg { order: 4; } #board-btn { order: 5; margin-left: auto; }
+  .seg button { padding: 4px 9px; }
+  .seg button .it { display: none; }
+  .motif, .stage-foot { padding-left: 18px; padding-right: 18px; }
+  .layer { left: 18px; right: 18px; }
+  .verse.xl { font-size: 30px; } .verse.l { font-size: 24px; } .verse.m { font-size: 19px; }
+  #choir { height: 104px; }
+  .seat .avatar { width: 38px; height: 38px; }
+  #composer-wrap { padding: 0 10px calc(12px + env(safe-area-inset-bottom)); }
   #board, #panel { width: 100vw; }
   .node { width: 150px; font-size: 12px; }
   .legend { display: none; }
-  .core { width: 180px; }
-  .core .q { font-size: 15px; }
 }
 </style>
 </head>
 <body>
 
-<!-- ============ 左：群图标栏 ============ -->
-<nav id="rail">
-  <div id="group-rail"></div>
-  <button class="rail-item rail-add" title="新建群聊" aria-label="新建群聊" onclick="newGroup()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-  </button>
-  <button id="me-btn" title="设置" aria-label="设置" onclick="openSettings()"></button>
-</nav>
+<!-- ============ 左：乐谱 + 演出列表 ============ -->
+<aside id="score">
+  <div class="score-head"><b>乐谱</b><span class="it muted">Score</span></div>
+  <div id="chat">
+    <div id="messages"></div>
+    <button id="new-pill" onclick="scrollToBottom(true)">有新乐句 ↓</button>
+  </div>
+  <div class="shows">
+    <div id="group-rail"></div>
+    <div class="shows-foot">
+      <button class="new" onclick="newGroup()">＋ 新的演出</button>
+      <button id="me-btn" title="设置" aria-label="设置" onclick="openSettings()"></button>
+    </div>
+  </div>
+</aside>
+<div id="scrim" onclick="closeScore()"></div>
 
-<!-- ============ 中：对话 / 沙盘 ============ -->
+<!-- ============ 中：舞台 ============ -->
 <main id="main">
+  <div id="spot" aria-hidden="true"></div>
+  <div id="beam" aria-hidden="true"></div>
   <header id="chat-head">
+    <button class="icon-btn" id="score-btn" aria-label="乐谱和演出列表" onclick="openScore()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+    </button>
     <div class="head-title">
       <div class="t" id="head-title"></div>
       <div class="s" id="head-sub"></div>
     </div>
-    <div id="roundtable" title="群成员和群设置" onclick="togglePanel()"></div>
+    <div class="seg" id="tempo-seg"></div>
     <div class="seg" id="view-seg">
-      <button data-v="chat" onclick="setView('chat')">对话</button>
-      <button data-v="sandbox" onclick="setView('sandbox')">沙盘</button>
+      <button data-v="chat" onclick="setView('chat')">舞台</button>
+      <button data-v="sandbox" onclick="setView('sandbox')">全景</button>
     </div>
-    <button class="pill" id="board-btn" onclick="toggleBoard()" title="按立场整理大家的观点">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7.7 7l8.5.7M17 9.8l-4 6.4M7 8l4 8.2"/></svg>
-      <span class="lbl">观点板</span>
-    </button>
-    <button class="icon-btn" title="群设置" aria-label="群设置" onclick="togglePanel()">
+    <button class="pill" id="board-btn" onclick="toggleBoard()" title="按立场整理大家的观点">主题板</button>
+    <button class="icon-btn" id="more-btn" title="演出设置" aria-label="演出设置" onclick="togglePanel()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>
     </button>
   </header>
 
   <div id="views">
-    <div id="chat">
-      <div id="messages"></div>
-      <div id="typing-area"></div>
+    <div id="stage">
+      <div class="motif" id="motif"></div>
+      <div class="boards">
+        <div class="layer" id="layer-a"></div>
+        <div class="layer" id="layer-b"></div>
+      </div>
+      <div class="stage-foot">
+        <div id="breath"></div>
+        <div class="nav" id="stage-nav"></div>
+      </div>
     </div>
     <div id="sandbox" hidden></div>
   </div>
-  <button id="new-pill" onclick="scrollToBottom(true)">有新消息 ↓</button>
+
+  <div id="choir"></div>
 
   <div id="composer-wrap">
     <div id="composer-inner">
       <div class="tools-row">
-        <button class="chip-btn" id="debate-btn" onclick="debateRound()" title="让每个AI看完别人的发言后互相评论">让他们互相评论</button>
-        <span id="quick-asks" style="display:contents"></span>
+        <button class="chip-btn" id="debate-btn" onclick="debateRound()" title="让每个声部听完别人的发言后互相评论"><span class="it">Fuga</span> · 让他们互相评论</button>
+        <button class="chip-btn" id="solo-btn" onclick="toggleSolo()" title="只请一位声部回答"><span class="it">Solo</span> · 只请一位</button>
+        <div id="solo-pop" hidden></div>
       </div>
       <div id="composer">
         <div id="mention-pop"></div>
         <div id="reply-bar"><span id="reply-text"></span><button class="icon-btn" style="width:24px;height:24px" onclick="setReply(null)" aria-label="取消引用">✕</button></div>
         <div id="pending-atts"></div>
         <div class="compose-row">
-          <button class="icon-btn" title="发送图片或文件（图片、PDF、文本/代码文件）" aria-label="添加图片或文件" onclick="document.getElementById('file-input').click()">
+          <span class="podium">指挥</span>
+          <textarea id="input" rows="1" placeholder="起一个新主题，或 @ 一位声部"></textarea>
+          <button class="icon-btn" title="发送图片或文件（图片、PDF、文本/代码文件）" aria-label="添加图片或文件" onclick="document.getElementById('file-input').click()" style="align-self:center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
           </button>
-          <textarea id="input" rows="1" placeholder="对大家说…  @ 单独叫人"></textarea>
           <button id="send-btn" title="发送" aria-label="发送" onclick="onSendBtn()"></button>
         </div>
       </div>
@@ -382,15 +411,15 @@ input, textarea, select { font: inherit; color: var(--text); }
   </div>
 </main>
 
-<!-- ============ 右：观点板 ============ -->
+<!-- ============ 右：主题板 ============ -->
 <aside id="board" hidden>
   <div class="board-head">
-    <b>观点板</b>
+    <b>主题板</b>
     <span class="small muted">按立场分组</span>
     <button class="icon-btn" title="重新整理" aria-label="重新整理" onclick="generateInsights()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
     </button>
-    <button class="icon-btn" aria-label="关闭观点板" onclick="toggleBoard(false)">✕</button>
+    <button class="icon-btn" aria-label="关闭主题板" onclick="toggleBoard(false)">✕</button>
   </div>
   <div id="board-body"></div>
   <div class="b-actions">
@@ -401,7 +430,7 @@ input, textarea, select { font: inherit; color: var(--text); }
 
 <!-- ============ 群设置面板 ============ -->
 <aside id="panel">
-  <div class="panel-head"><span>群设置</span><button class="icon-btn" aria-label="关闭" onclick="togglePanel(false)">✕</button></div>
+  <div class="panel-head"><span>演出设置</span><button class="icon-btn" aria-label="关闭" onclick="togglePanel(false)">✕</button></div>
   <div id="panel-body"></div>
 </aside>
 
@@ -460,7 +489,7 @@ input, textarea, select { font: inherit; color: var(--text); }
 
 <script>
 /* =====================================================================
-   AI 群聊 v0.3
+   复调 v0.4 —— 一场由几个 AI 声部合唱的群聊
    - 多个群，每个群有自己的成员、人设和聊天记录
    - 通过 OpenRouter 调用各家模型；可以发图片、PDF、文本文件
    - 数据都存在本机：设置在 localStorage，群和聊天记录在 IndexedDB（容量大，放得下图片）
@@ -501,9 +530,9 @@ const OLD_PERSONAS = [
   "你擅长提供不同角度和实际例子。", "你熟悉中国的情况，说话接地气。",
 ];
 const MODES = {
-  natural:    { label: "自然群聊", desc: "随机顺序发言，能看到彼此，会接话、会@人，没话说就潜水。" },
-  parallel:   { label: "同时回答", desc: "大家各自独立思考，互相看不到这一轮的回答，适合要几个不同意见。" },
-  sequential: { label: "轮流发言", desc: "按成员顺序一个个说，后面的人能接着前面的人说。" },
+  natural:    { it: "Rubato", label: "自然", desc: "随机顺序发言，能看到彼此，会接话、会@人，没话说就潜水。" },
+  parallel:   { it: "Tutti", label: "同时", desc: "大家各自独立思考，互相看不到这一轮的回答，适合要几个不同意见。" },
+  sequential: { it: "Canon", label: "轮流", desc: "按成员顺序一个个说，后面的人能接着前面的人说。" },
 };
 
 /* =====================================================================
@@ -663,38 +692,39 @@ function autoPickModels(members) {
 function shortModel(id) { return id ? id.split("/").pop() : "未选模型"; }
 
 /* =====================================================================
-   左侧群图标栏
+   演出列表（左下角）
    ===================================================================== */
 function sortedGroups() { return [...groups].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); }
 
 function renderSidebar() {
   $("group-rail").innerHTML = sortedGroups().map(g => {
     const last = [...g.messages].reverse().find(m => m.sender !== "system");
-    const tip = g.name + (last ? `\n${last.sender === "user" ? "我" : senderName(last.sender, g)}：${snippet(last)}` : "");
-    return `<button class="rail-item ${g === current ? "active" : ""} ${busyGroups.has(g.id) ? "busy" : ""}"
-      title="${esc(tip)}" aria-label="${esc(g.name)}" onclick="openGroup('${g.id}')">${esc(railLabel(g.name))}
-      ${g.unread ? '<span class="dot"></span>' : ""}</button>`;
+    const right = busyGroups.has(g.id) ? '<span class="live">演出中</span>'
+      : g.unread ? '<span class="dot"></span>' : `<span class="small">${last ? shortTime(last.time) : ""}</span>`;
+    return `<button class="show ${g === current ? "on" : ""}" onclick="openGroup('${g.id}')" title="${esc(g.name)}"><span>${esc(g.name)}</span>${right}</button>`;
   }).join("");
 }
-function railLabel(name) { const t = (name || "群").replace(/^AI\s*/i, "").trim() || name; return [...t][0] || "群"; }
 function avatarHtml(m, cls = "") {
   return `<div class="avatar ${cls}" style="--c:${m.color}">${esc(m.avatar)}</div>`;
 }
+function openScore() { document.body.classList.add("score-open"); }
+function closeScore() { document.body.classList.remove("score-open"); }
 
 function openGroup(id) {
   current = groups.find(g => g.id === id) || groups[0];
   current.unread = 0;
-  current._expanded = false;
   config.activeGroupId = current.id;
   lsSave("aigc-config", config);
+  stageFocus = null; shownId = null;
   setReply(null); linking = null;
   renderSidebar(); renderHeader(); renderView(); renderPanel(); renderBoard(); updateBusyUI();
+  closeScore();
 }
 
 async function newGroup() {
-  // 新群默认带上当前群的成员和人设（用户自己调好的不用再调一遍）
+  // 新的演出默认带上当前这场的声部和人设
   const members = structuredClone(current ? current.members : DEFAULT_MEMBERS);
-  const g = makeGroup("新的群聊", members);
+  const g = makeGroup("新的演出", members);
   groups.push(g);
   saveGroup(g);
   openGroup(g.id);
@@ -703,31 +733,32 @@ async function newGroup() {
 }
 
 async function deleteGroup() {
-  if (busyGroups.has(current.id)) return toast("这个群还在聊天，先停止再删除");
-  if (!await confirmBox(`删除「${esc(current.name)}」？聊天记录会一起删掉，不能恢复。`, "删除")) return;
+  if (busyGroups.has(current.id)) return toast("这场还在演出，先停止再删除");
+  if (!await confirmBox(`删除「${esc(current.name)}」？整场记录会一起删掉，不能恢复。`, "删除")) return;
   const id = current.id;
   groups = groups.filter(g => g.id !== id);
   await idbDelete(id).catch(() => {});
-  if (!groups.length) { const g = makeGroup("AI 群聊", structuredClone(DEFAULT_MEMBERS)); groups.push(g); saveGroup(g); autoPickModels(g.members); }
+  if (!groups.length) { const g = makeGroup("复调", structuredClone(DEFAULT_MEMBERS)); groups.push(g); saveGroup(g); autoPickModels(g.members); }
   togglePanel(false);
   openGroup(sortedGroups()[0].id);
 }
 
 async function clearGroup() {
   if (busyGroups.has(current.id)) return;
-  if (!await confirmBox("清空这个群的聊天记录？成员、人设和保存的线索会保留。", "清空")) return;
+  if (!await confirmBox("清空这场的记录？声部、人设和保存的线索会保留。", "清空")) return;
   current.messages = [];
   current.insights = null;
+  stageFocus = null; shownId = null;
   saveGroup(current);
   renderView(); renderSidebar(); renderPanel(); renderBoard(); renderHeader();
 }
 
 /* =====================================================================
-   顶栏：群名 + 圆桌（谁在说话谁发光，谁@了谁闪一条线）
+   顶栏：标题、速度记号（发言模式）
    ===================================================================== */
 function activeMembers(g = current) { return g.members.filter(m => m.enabled && m.model); }
 
-// 一"轮"从你的一条消息（或"互相评论"）开始
+// 一个"乐章"从你的一句话（或"赋格"）开始
 function roundStarts(g = current) {
   const idx = [];
   g.messages.forEach((m, i) => { if (m.sender === "user" || m.sender === "system") idx.push(i); });
@@ -739,122 +770,62 @@ function renderHeader() {
   $("head-title").textContent = current.name;
   const act = activeMembers();
   const rounds = roundStarts().length;
-  $("head-sub").onclick = config.apiKey ? cycleMode : openSettings;
-  $("head-sub").style.cursor = "pointer";
-  $("head-sub").title = config.apiKey ? "点一下切换发言模式" : "";
+  $("head-sub").onclick = config.apiKey ? null : openSettings;
+  $("head-sub").style.cursor = config.apiKey ? "" : "pointer";
   $("head-sub").textContent = !config.apiKey ? "还没填 API Key，点这里去设置"
-    : !act.length ? "群里没有可用的AI，点右边 ⋯ 去开启"
-    : `${MODES[current.mode]?.label || ""}${rounds ? ` · 第 ${rounds} 轮` : ""}`;
-  renderRoundtable();
-  renderQuickAsks();
-}
-function renderRoundtable() {
-  const speaking = typing.get(current.id) || new Set();
-  const list = current.members.slice(0, 6);
-  $("roundtable").innerHTML = list.map(m => {
-    const on = speaking.has(m.id);
-    return `<div class="rt-seat ${on ? "speaking" : ""} ${m.enabled ? "" : "off"}" data-id="${m.id}" style="--c:${m.color}">
-      ${avatarHtml(m, on ? "speaking" : "")}<span>${on ? "说话中" : esc(m.name)}</span></div>`;
-  }).join("") + `<div class="rt-link" id="rt-link"></div>`;
-}
-// 圆桌上从 A 到 B 闪一条线（A @了 B）
-let linkTimer = null;
-function flashLink(fromId, toId) {
-  const a = document.querySelector(`.rt-seat[data-id="${fromId}"] .avatar`);
-  const b = document.querySelector(`.rt-seat[data-id="${toId}"] .avatar`);
-  const line = $("rt-link");
-  if (!a || !b || !line) return;
-  const box = $("roundtable").getBoundingClientRect();
-  const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-  const x1 = ra.left + ra.width / 2 - box.left, y1 = ra.top + ra.height / 2 - box.top;
-  const x2 = rb.left + rb.width / 2 - box.left, y2 = rb.top + rb.height / 2 - box.top;
-  const fa = current.members.find(m => m.id === fromId), fb = current.members.find(m => m.id === toId);
-  Object.assign(line.style, {
-    left: x1 + "px", top: y1 + "px", width: Math.hypot(x2 - x1, y2 - y1) + "px",
-    transform: `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`,
-    background: `linear-gradient(90deg, ${fa?.color || "#999"}, ${fb?.color || "#999"})`,
-  });
-  line.classList.add("show");
-  clearTimeout(linkTimer);
-  linkTimer = setTimeout(() => line.classList.remove("show"), 1800);
+    : !act.length ? "台上还没有声部，点右边 ⋯ 去邀请"
+    : `第 ${Math.max(rounds, 1)} 乐章 · ${act.length} 位声部在场`;
+  $("tempo-seg").innerHTML = Object.entries(MODES).map(([k, v]) =>
+    `<button class="${current.mode === k ? "on" : ""}" title="${esc(v.desc)}" onclick="setMode('${k}')"><span class="it">${v.it}</span>${v.label}</button>`).join("");
+  renderChoir();
 }
 function cycleMode() {
   const keys = Object.keys(MODES);
   setMode(keys[(keys.indexOf(current.mode) + 1) % keys.length]);
-  toast(`发言模式：${MODES[current.mode].label}——${MODES[current.mode].desc}`);
-}
-function renderQuickAsks() {
-  const act = activeMembers();
-  $("quick-asks").innerHTML = act.length > 1 ? act.slice(0, 4).map(m =>
-    `<button class="chip-btn" onclick="askOnly('${m.id}')">只问${esc(m.name)}</button>`).join("") : "";
 }
 function askOnly(id) {
   const m = current.members.find(x => x.id === id);
   const el = $("input");
   el.value = "@" + m.name + " " + el.value.replace(/^(@\S+\s)+/, "");
   el.focus(); el.selectionStart = el.selectionEnd = el.value.length; autoGrow();
+  $("solo-pop").hidden = true;
+}
+function toggleSolo() {
+  const pop = $("solo-pop");
+  if (!pop.hidden) { pop.hidden = true; return; }
+  const act = activeMembers();
+  if (!act.length) return toast("台上还没有声部");
+  pop.innerHTML = act.map(m => `<div class="mention-item" onclick="askOnly('${m.id}')">${avatarHtml(m, "sm")}<span>${esc(m.name)}</span>
+    <span class="small muted" style="margin-left:auto">${esc(shortModel(m.model))}</span></div>`).join("");
+  pop.hidden = false;
 }
 
 /* =====================================================================
-   对话 / 沙盘 切换
+   舞台 / 全景 切换
    ===================================================================== */
 let view = "chat";
-function setView(v) {
-  view = v;
-  renderView();
-}
+function setView(v) { view = v; renderView(); }
 function renderView() {
   document.querySelectorAll("#view-seg button").forEach(b => b.classList.toggle("on", b.dataset.v === view));
-  $("chat").hidden = view !== "chat";
+  $("stage").hidden = view !== "chat";
   $("sandbox").hidden = view !== "sandbox";
-  $("new-pill").style.display = "none";
-  if (view === "chat") renderChat(); else renderSandbox();
+  renderChat();
+  if (view === "sandbox") renderSandbox();
 }
 
 /* =====================================================================
-   对话视图：按时间滚动；早的轮次和太长的消息自动收起
+   乐谱（左边的完整记录）
    ===================================================================== */
-const KEEP_ROUNDS = 2;        // 最新几轮保持展开
-const LONG_CHARS = 160;       // 超过这么多字算长消息，先只显示 3 行
+const NUM = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
 
 function senderName(sender, g = current) {
   if (sender === "user") return config.userName;
   if (sender === "system") return "主持人";
-  return g.members.find(x => x.id === sender)?.name || "已退群的成员";
+  return g.members.find(x => x.id === sender)?.name || "已离场的声部";
 }
-
-function renderChat() {
-  const box = $("messages");
-  box.innerHTML = "";
-  const msgs = current.messages;
-  if (!msgs.length) {
-    box.innerHTML = `<div class="empty-hint"><div class="big">群聊已就绪</div>
-      <div>说句话试试，或者 @ 某个人单独问</div>
-      <div class="small" style="margin-top:6px">点顶部的圆桌头像可以改人设、换模型</div></div>`;
-    renderTyping();
-    return;
-  }
-  const starts = roundStarts();
-  let from = 0;
-  if (!current._expanded && starts.length > KEEP_ROUNDS) {
-    from = starts[starts.length - KEEP_ROUNDS];
-    const hidden = msgs.slice(0, from);
-    const who = [...new Set(hidden.filter(m => m.sender !== "user" && m.sender !== "system").map(m => senderName(m.sender)))];
-    const bar = document.createElement("button");
-    bar.className = "fold-bar";
-    const n = starts.length - KEEP_ROUNDS;
-    bar.innerHTML = `<span>第 ${n > 1 ? "1–" + n : "1"} 轮 · ${hidden.length} 条消息已收起${who.length ? " · " + esc(who.slice(0, 4).join("、")) : ""}</span><b>展开</b>`;
-    bar.onclick = () => { current._expanded = true; const h = $("chat").scrollHeight - $("chat").scrollTop; renderChat(); $("chat").scrollTop = $("chat").scrollHeight - h; };
-    box.appendChild(bar);
-  }
-  for (let i = from; i < msgs.length; i++) box.appendChild(messageEl(msgs[i], i > from ? msgs[i - 1] : null));
-  renderTyping();
-  scrollToBottom(true);
-}
-
-// 同一个人在 5 分钟内连发、且不是引用回复 → 算"连发"，只显示一次名字
+// 同一个人在 5 分钟内连发、且不是引用回复 → 算同一段"乐句"
 function isCont(prev, msg) {
-  return !!(prev && msg && prev.sender === msg.sender && msg.sender !== "system" && !msg.error && !prev.error
+  return !!(prev && msg && prev.sender === msg.sender && msg.sender !== "system" && msg.sender !== "user" && !msg.error && !prev.error
     && !msg.replyTo && msg.time - prev.time < 5 * 60 * 1000);
 }
 // 这条消息在回应谁：引用了谁，或者 @ 了谁
@@ -869,76 +840,262 @@ function targetOf(msg, g = current) {
   return null;
 }
 
-function messageEl(msg, prev) {
-  const frag = document.createDocumentFragment();
-  if (!prev || msg.time - prev.time > 5 * 60 * 1000) {
-    const t = document.createElement("div");
-    t.className = "time-sep"; t.textContent = longTime(msg.time);
-    frag.appendChild(t);
+// 整个界面（乐谱 + 舞台）重新画一遍
+function renderChat() {
+  renderScoreList();
+  renderStage(true);
+}
+
+function renderScoreList() {
+  const box = $("messages");
+  const msgs = current.messages;
+  if (!msgs.length) {
+    box.innerHTML = `<div class="b-note" style="padding:8px 10px">演出还没开始。<br>在下面的指挥台起一个主题，每一句都会记在这里。</div>`;
+    return;
   }
-  if (msg.sender === "system") {
-    const d = document.createElement("div");
-    d.className = "sys-msg"; d.dataset.id = msg.id;
-    d.innerHTML = `<span>互相评论环节</span>`;
-    frag.appendChild(d);
-    return frag;
-  }
+  box.innerHTML = "";
+  let mov = 0;
+  msgs.forEach((m, i) => {
+    if (m.sender === "user" || m.sender === "system") box.appendChild(movEl(m, ++mov));
+    if (m.sender !== "system") box.appendChild(scoreItemEl(m, msgs[i - 1]));
+  });
+  highlightScore();
+  scrollToBottom(true);
+}
+function movEl(msg, n) {
+  const d = document.createElement("div");
+  d.className = "mov";
+  d.textContent = msg.sender === "system" ? "赋格 · 互相评论" : `第${NUM[n - 1] || n}乐章 · ${shortTime(msg.time)}`;
+  return d;
+}
+function scoreItemEl(msg, prev) {
   const isMe = msg.sender === "user";
   const member = current.members.find(m => m.id === msg.sender);
-  const name = isMe ? config.userName : (member?.name || "已退群的成员");
   const color = isMe ? "var(--text)" : (member?.color || "#999");
-  const cont = isCont(prev, msg);
   const target = isMe ? null : targetOf(msg);
-  const long = !isMe && !msg.error && (msg.text || "").length > LONG_CHARS;
-
-  let quote = "";
-  if (msg.replyTo) {
-    const q = current.messages.find(m => m.id === msg.replyTo);
-    quote = `<div class="quote">${q ? esc(senderName(q.sender) + "：" + snippet(q)) : "（原消息已删除）"}</div>`;
-  }
-  const atts = msg.attachments?.length ? `<div class="atts">${msg.attachments.map(a =>
-    a.type === "image" ? `<img src="${a.dataUrl}" alt="${esc(a.name)}" onclick="viewImage(this.src)">`
-      : `<div class="file-chip">📄 <span>${esc(a.name)}</span><span class="muted">${fmtSize(a.size)}</span></div>`).join("")}</div>` : "";
-  let body = msg.text ? (isMe ? esc(msg.text).replace(/\n/g, "<br>") : renderMarkdown(msg.text)) : "";
-  if (body && !isMe) for (const m of current.members) {
-    body = body.split("@" + esc(m.name)).join(`<span class="at" style="color:${m.color}">@${esc(m.name)}</span>`);
-  }
-
-  const row = document.createElement("div");
-  row.className = "msg" + (isMe ? " me" : "") + (cont ? " cont" : "") + (long ? " long clamped" : "");
-  row.dataset.id = msg.id;
-  row.style.setProperty("--c", color);
-  const actions = `<div class="msg-actions">
-      <span class="meta">${shortTime(msg.time)}${member && !isMe ? " · " + esc(shortModel(member.model)) : ""}${msg.cost != null ? ` · $${Number(msg.cost).toFixed(4)}` : ""}</span>
-      ${msg.text ? `<button onclick="copyMsg('${msg.id}')">复制</button>` : ""}
-      ${msg.error ? "" : `<button onclick="quoteMsg('${msg.id}')">引用</button>`}
-      ${!isMe && !msg.error ? `<button onclick="toggleStar('${msg.id}')">${msg.starred ? "取消星标" : "标星"}</button>` : ""}
-      <button onclick="deleteMsg('${msg.id}')">删除</button>
+  const el = document.createElement("div");
+  el.className = "s-item" + (isMe ? " me" : "") + (isCont(prev, msg) ? " cont" : "") + (msg.error ? " err" : "");
+  el.dataset.id = msg.id;
+  el.style.setProperty("--c", color);
+  el.tabIndex = 0;
+  const atts = msg.attachments?.length ? `<div class="s-atts">${msg.attachments.map(a => a.type === "image" ? "［图片］" : "［" + esc(a.name) + "］").join(" ")}</div>` : "";
+  el.innerHTML = `<div class="s-who"><i></i>${esc(isMe ? "你 · 指挥" : (member?.name || "已离场的声部"))}${target ? `<span style="color:var(--muted);font-weight:400">→ ${esc(senderName(target))}</span>` : ""}${msg.starred ? '<span class="star">★</span>' : ""}</div>
+    ${msg.text ? `<div class="s-text">${esc(msg.text)}</div>` : ""}${atts}
+    <div class="s-actions">
+      ${msg.text ? `<span onclick="event.stopPropagation();copyMsg('${msg.id}')">复制</span>` : ""}
+      ${msg.error ? "" : `<span onclick="event.stopPropagation();quoteMsg('${msg.id}')">引用</span>`}
+      ${!isMe && !msg.error ? `<span onclick="event.stopPropagation();toggleStar('${msg.id}')">${msg.starred ? "取消星标" : "标星"}</span>` : ""}
+      <span onclick="event.stopPropagation();deleteMsg('${msg.id}')">删除</span>
     </div>`;
-  if (isMe) {
-    row.innerHTML = `<div class="msg-body">${atts}${body || quote ? `<div class="bubble">${quote}${body}</div>` : ""}</div>${actions}`;
-  } else {
-    row.innerHTML = `<span class="dot"></span>
-      <div class="msg-body">
-        <div class="msg-name">${esc(name)}${target ? `<span class="to">→ ${esc(senderName(target))}</span>` : ""}${msg.starred ? '<span class="star">★</span>' : ""}</div>
-        ${atts}
-        ${body || quote ? `<div class="text${msg.error ? " error" : ""}">${quote}<div class="text-inner">${body}</div>${long ? `<button class="more" onclick="expandMsg(this)">展开全文</button>` : ""}</div>` : ""}
-      </div>${actions}`;
-  }
-  row.addEventListener("contextmenu", e => {
-    e.preventDefault();
-    document.querySelectorAll(".msg.show-actions").forEach(x => x !== row && x.classList.remove("show-actions"));
-    row.classList.toggle("show-actions");
-  });
-  frag.appendChild(row);
-  return frag;
+  el.title = shortTime(msg.time) + (member && !isMe ? " · " + shortModel(member.model) : "") + (msg.cost != null ? ` · $${Number(msg.cost).toFixed(4)}` : "");
+  el.onclick = () => focusMsg(msg.id);
+  el.onkeydown = e => { if (e.key === "Enter") focusMsg(msg.id); };
+  el.addEventListener("contextmenu", e => { e.preventDefault(); el.classList.toggle("show-actions"); });
+  return el;
 }
-function expandMsg(btn) {
-  const row = btn.closest(".msg");
-  const open = row.classList.toggle("clamped");
-  btn.textContent = open ? "展开全文" : "收起";
+function highlightScore() {
+  const ids = new Set(stanza(currentStanzaId()).map(m => m.id));
+  document.querySelectorAll("#messages .s-item").forEach(el => el.classList.toggle("on", ids.has(el.dataset.id)));
 }
 
+const chatEl = () => $("chat");
+function isNearBottom() { const c = chatEl(); return c.scrollHeight - c.scrollTop - c.clientHeight < 120; }
+function scrollToBottom(instant) {
+  const c = chatEl();
+  c.scrollTo({ top: c.scrollHeight, behavior: instant ? "auto" : "smooth" });
+  $("new-pill").style.display = "none";
+}
+
+/* =====================================================================
+   舞台：一次只演一段，上一段淡出、下一段浮上来
+   ===================================================================== */
+let stageFocus = null;   // 你在乐谱里点了某一句 → 舞台停在那里；null = 跟着最新的走
+let shownId = null;      // 舞台上现在演的是哪一段（段首消息 id）
+
+// 每一段"乐句"的段首（AI 的发言，连发的算一段）
+function stanzaHeads(g = current) {
+  const out = [];
+  g.messages.forEach((m, i) => {
+    if (m.sender !== "user" && m.sender !== "system" && !isCont(g.messages[i - 1], m)) out.push(m.id);
+  });
+  return out;
+}
+function stanza(headId, g = current) {
+  const i = g.messages.findIndex(m => m.id === headId);
+  if (i < 0) return [];
+  const out = [g.messages[i]];
+  for (let j = i + 1; j < g.messages.length && isCont(g.messages[j - 1], g.messages[j]); j++) out.push(g.messages[j]);
+  return out;
+}
+function currentStanzaId() {
+  if (stageFocus && current.messages.some(m => m.id === stageFocus)) return stageFocus;
+  stageFocus = null;
+  const starts = roundStarts();
+  const from = starts.length ? starts[starts.length - 1] : 0;
+  const heads = stanzaHeads();
+  const idxOf = id => current.messages.findIndex(m => m.id === id);
+  const inRound = heads.filter(id => idxOf(id) > from || !starts.length);
+  return inRound[inRound.length - 1] || null;
+}
+function verseSize(len) { return len <= 40 ? "xl" : len <= 90 ? "l" : len <= 220 ? "m" : "s"; }
+function verseHtml(msg) {
+  let body = renderMarkdown(msg.text || "");
+  for (const m of current.members) body = body.split("@" + esc(m.name)).join(`<span class="at" style="color:${m.color}">@${esc(m.name)}</span>`);
+  return `<p>${body}</p>`;
+}
+
+function renderStage(force) {
+  if (!current) return;
+  const id = currentStanzaId();
+  const lines = stanza(id);
+  const head = lines[0];
+  const msgs = current.messages;
+
+  // 主题：这一段所在乐章的开头那句话
+  const headIdx = head ? msgs.indexOf(head) : msgs.length;
+  let motifMsg = null;
+  for (let i = Math.min(headIdx, msgs.length - 1); i >= 0; i--) if (msgs[i].sender === "user" || msgs[i].sender === "system") { motifMsg = msgs[i]; break; }
+  const mAtts = motifMsg?.attachments?.length ? `<div class="thumbs">${motifMsg.attachments.map(a => a.type === "image"
+    ? `<img src="${a.dataUrl}" alt="" onclick="viewImage(this.src)">` : `<span class="file-chip">📄 <span>${esc(a.name)}</span></span>`).join("")}</div>` : "";
+  $("motif").innerHTML = !motifMsg ? `<div class="label">主 题</div><div class="q muted">还没有主题</div>`
+    : motifMsg.sender === "system" ? `<div class="label">赋 格</div><div class="q">每位声部回应别人刚才说的话</div>`
+    : `<div class="label">主 题</div>${motifMsg.text ? `<div class="q">${esc(motifMsg.text)}</div>` : ""}${mAtts}`;
+
+  // 舞台上的这一段
+  const typingIds = [...(typing.get(current.id) || [])];
+  let html, key;
+  if (head) {
+    const member = current.members.find(m => m.id === head.sender);
+    const order = current.members.filter(m => m.enabled).indexOf(member);
+    const target = targetOf(head);
+    const len = lines.reduce((s, m) => s + (m.text || "").length, 0);
+    html = `<div class="who" style="--c:${member?.color || "#999"}">${esc(member?.name || "已离场的声部")}${order >= 0 ? " · 第" + (NUM[order] || order + 1) + "声部" : ""}
+        ${target ? `<span class="to">→ ${esc(senderName(target))}</span>` : ""}${lines.some(m => m.starred) ? '<span class="star">★</span>' : ""}</div>
+      <div class="verse ${head.error ? "err" : verseSize(len)}">${lines.map(verseHtml).join("")}</div>`;
+    key = head.id;
+  } else {
+    const waiting = typingIds.length || busyGroups.has(current.id);
+    html = `<div class="rest">${!msgs.length ? `<div class="big">演出还没开始</div><div>在下面的指挥台起一个主题，声部们会轮流登台</div>`
+      : waiting ? `<div class="big">声部们正在酝酿</div><div>第一句马上就来</div>`
+      : `<div class="big">台上很安静</div><div>还没有人回应这个主题，试试 @ 一位声部</div>`}</div>`;
+    key = "rest:" + (!msgs.length ? 0 : waiting ? 1 : 2);
+  }
+  if (force || key !== shownId) {
+    swapLayer(html);
+  } else {
+    const on = document.querySelector(".layer.on");   // 同一段又多了一句：原地更新，不再播放切换动画
+    if (on) on.innerHTML = html;
+  }
+  shownId = key;
+
+  renderBreath();
+  renderNav();
+  renderChoir();
+  highlightScore();
+}
+function swapLayer(html) {
+  const a = $("layer-a"), b = $("layer-b");
+  const cur = a.classList.contains("on") ? a : b.classList.contains("on") ? b : null;
+  const nxt = cur === a ? b : a;
+  nxt.style.transition = "none";
+  nxt.classList.remove("on", "out");
+  nxt.innerHTML = html;
+  void nxt.offsetHeight;
+  nxt.style.transition = "";
+  requestAnimationFrame(() => {
+    if (cur) { cur.classList.remove("on"); cur.classList.add("out"); }
+    nxt.classList.add("on");
+  });
+}
+function renderBreath() {
+  const ids = [...(typing.get(current.id) || [])];
+  $("breath").innerHTML = ids.map(id => {
+    const m = current.members.find(x => x.id === id);
+    return m ? `<span class="breath" style="--c:${m.color}"><span class="bars"><i></i><i></i><i></i><i></i></span>${esc(m.name)} 正在酝酿…</span>` : "";
+  }).join("");
+}
+function renderNav() {
+  const heads = stanzaHeads();
+  const id = currentStanzaId();
+  const i = heads.indexOf(id);
+  if (!heads.length) { $("stage-nav").innerHTML = ""; return; }
+  $("stage-nav").innerHTML = `
+    <button class="icon-btn" aria-label="上一句" onclick="stageStep(-1)" ${i <= 0 ? "disabled" : ""}>‹</button>
+    <span>${i + 1} / ${heads.length}</span>
+    <button class="icon-btn" aria-label="下一句" onclick="stageStep(1)" ${i < 0 || i >= heads.length - 1 ? "disabled" : ""}>›</button>
+    ${stageFocus ? `<button class="latest" onclick="followLatest()">回到最新</button>` : ""}`;
+}
+function stageStep(delta) {
+  const heads = stanzaHeads();
+  if (!heads.length) return;
+  let i = heads.indexOf(currentStanzaId());
+  if (i < 0) i = heads.length;
+  const j = Math.max(0, Math.min(heads.length - 1, i + delta));
+  stageFocus = j === heads.length - 1 ? null : heads[j];
+  renderStage();
+  document.querySelector(`#messages .s-item[data-id="${heads[j]}"]`)?.scrollIntoView({ block: "nearest" });
+}
+function followLatest() { stageFocus = null; renderStage(); scrollToBottom(); }
+// 在乐谱里点一句 → 舞台演那一段
+function focusMsg(id) {
+  const msgs = current.messages;
+  let i = msgs.findIndex(m => m.id === id);
+  if (i < 0) return;
+  if (msgs[i].sender === "user" || msgs[i].sender === "system") {
+    const next = msgs.slice(i + 1).find(m => m.sender !== "user" && m.sender !== "system");
+    if (!next) return;
+    i = msgs.indexOf(next);
+  }
+  while (i > 0 && isCont(msgs[i - 1], msgs[i])) i--;
+  const heads = stanzaHeads();
+  stageFocus = heads[heads.length - 1] === msgs[i].id ? null : msgs[i].id;
+  if (view !== "chat") setView("chat"); else renderStage();
+  if (window.innerWidth <= 860) closeScore();
+}
+
+/* =====================================================================
+   合唱席：弧形排开，舞台上的那位升起来发光，正在酝酿的也亮着
+   ===================================================================== */
+function seatPositions(n) {
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const t = Math.PI * (1.14 + (n === 1 ? 0.36 : 0.72 * k / (n - 1)));
+    out.push([50 + 38 * Math.cos(t), 74 + 62 * Math.sin(t)]);
+  }
+  return out;
+}
+function renderChoir() {
+  if (!current) return;
+  const list = current.members.slice(0, 8);
+  const pos = seatPositions(list.length);
+  const headMsg = stanza(currentStanzaId())[0];
+  const typingIds = typing.get(current.id) || new Set();
+  const lead = headMsg?.sender || [...typingIds][0] || null;
+  $("choir").innerHTML = list.map((m, k) => {
+    const cls = [m.enabled ? "" : "off", m.id === lead ? "lead" : "", typingIds.has(m.id) ? "sing" : ""].join(" ");
+    const lbl = typingIds.has(m.id) ? "酝酿中" : m.id === lead ? "正在演唱" : m.name;
+    return `<button class="seat ${cls}" data-id="${m.id}" style="--c:${m.color};left:${pos[k][0]}%;top:${pos[k][1]}px"
+      title="${esc(m.name)}${m.enabled ? "" : "（暂时离场）"} · 点一下修改" onclick="openMember('${m.id}')">${avatarHtml(m)}<span class="lbl">${esc(lbl)}</span></button>`;
+  }).join("");
+  // 聚光灯和光柱跟着台上的人
+  const li = list.findIndex(m => m.id === lead);
+  const spot = $("spot"), beam = $("beam");
+  spot.style.left = li >= 0 ? pos[li][0] + "%" : "50%";
+  spot.style.setProperty("--sc", li >= 0 ? list[li].color : "var(--text)");
+  beam.style.left = li >= 0 ? pos[li][0] + "%" : "50%";
+  beam.style.setProperty("--sc", li >= 0 ? list[li].color : "var(--text)");
+  beam.classList.toggle("on", li >= 0);
+}
+function openMember(id) { openMemberId = id; togglePanel(true); }
+function pingSeat(id) {
+  const el = document.querySelector(`.seat[data-id="${id}"]`);
+  if (!el) return;
+  el.classList.remove("ping"); void el.offsetWidth; el.classList.add("ping");
+}
+
+/* =====================================================================
+   新消息进来
+   ===================================================================== */
 function addMessage(g, msg) {
   msg.id ||= uid("msg_");
   msg.time = Date.now();
@@ -946,18 +1103,19 @@ function addMessage(g, msg) {
   g.messages.push(msg);
   saveGroup(g);
   if (g === current) {
-    if (view === "chat") {
-      if (g.messages.length === 1) $("messages").innerHTML = "";
-      const nearBottom = isNearBottom();
-      $("messages").appendChild(messageEl(msg, prev));
-      if (nearBottom || msg.sender === "user") scrollToBottom(); else $("new-pill").style.display = "block";
-    } else scheduleSandbox();
-    // 圆桌：AI @了谁 / 引用了谁，就从它连一条线过去
-    if (msg.sender !== "user" && msg.sender !== "system") {
+    const box = $("messages");
+    if (g.messages.length === 1) box.innerHTML = "";
+    const nearBottom = isNearBottom();
+    if (msg.sender === "user" || msg.sender === "system") box.appendChild(movEl(msg, roundStarts(g).length));
+    if (msg.sender !== "system") box.appendChild(scoreItemEl(msg, prev));
+    if (nearBottom || msg.sender === "user") scrollToBottom(); else $("new-pill").style.display = "block";
+    if (msg.sender === "user" || msg.sender === "system") { stageFocus = null; renderHeader(); }
+    renderStage();
+    if (view === "sandbox") scheduleSandbox();
+    if (msg.sender !== "user" && msg.sender !== "system") {   // @ 了谁，谁的席位闪一下
       const t = targetOf(msg, g);
-      if (t && t !== "user") flashLink(msg.sender, t);
+      if (t && t !== "user") pingSeat(t);
     }
-    if (msg.sender === "user" || msg.sender === "system") renderHeader();
     markBoardStale();
   } else if (msg.sender !== "system") {
     g.unread = (g.unread || 0) + 1;
@@ -966,48 +1124,30 @@ function addMessage(g, msg) {
   return msg;
 }
 
-function renderTyping() {
-  const ids = typing.get(current.id) || new Set();
-  $("typing-area").innerHTML = [...ids].map(id => {
-    const m = current.members.find(x => x.id === id);
-    return m ? `<div class="typing-row" style="--c:${m.color}"><span class="dot"></span>${esc(m.name)} 正在输入…</div>` : "";
-  }).join("");
-}
+function renderTyping() { if (!current) return; if (!currentStanzaId()) renderStage(); else { renderBreath(); renderChoir(); } }   // 台上还空着时，整台刷新（比如本轮结束、大家都潜水了）
 function setTyping(g, memberId, on) {
   if (!typing.has(g.id)) typing.set(g.id, new Set());
   const s = typing.get(g.id);
   on ? s.add(memberId) : s.delete(memberId);
-  if (g === current) {
-    renderRoundtable();
-    if (view === "chat") { const nb = isNearBottom(); renderTyping(); if (nb) scrollToBottom(); }
-  }
+  if (g === current) { if (!currentStanzaId()) renderStage(); else renderTyping(); }
 }
 
-const chatEl = () => $("chat");
-function isNearBottom() { const c = chatEl(); return c.scrollHeight - c.scrollTop - c.clientHeight < 140; }
-function scrollToBottom(instant) {
-  const c = chatEl();
-  c.scrollTo({ top: c.scrollHeight, behavior: instant ? "auto" : "smooth" });
-  $("new-pill").style.display = "none";
-}
-// 从沙盘或观点板跳回对话里的某条消息
+// 从主题板或全景跳回舞台上的某一句
 function jumpTo(id) {
-  if (!current.messages.some(m => m.id === id)) return toast("这条消息已经被删掉了");
-  current._expanded = true;
+  if (!current.messages.some(m => m.id === id)) return toast("这一句已经被删掉了");
   if (window.innerWidth <= 1100) toggleBoard(false);
-  setView("chat");
-  const el = $("messages").querySelector(`.msg[data-id="${id}"]`);
-  if (el) { el.scrollIntoView({ block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1700); }
+  focusMsg(id);
+  document.querySelector(`#messages .s-item[data-id="${id}"]`)?.scrollIntoView({ block: "center" });
 }
 function toggleStar(id) {
   const m = findMsg(id);
   if (!m) return;
   m.starred = !m.starred;
   saveGroup(current, false);
-  renderView();
-  toast(m.starred ? "已标星（只是你的记号，不会影响别人的发言）" : "已取消星标");
+  renderScoreList(); renderStage();
+  if (view === "sandbox") renderSandbox();
+  toast(m.starred ? "已标星（只是你的记号，不影响别人的发言）" : "已取消星标");
 }
-
 /* =====================================================================
    沙盘视图：问题在中心，观点越被大家接话就越靠近中心
    注意：位置只看"其他成员有没有接这句话"，不看你喜不喜欢，免得AI迎合你
@@ -1436,7 +1576,6 @@ async function send() {
   if (!targets.length) { toast("群里没有可用的AI，点右上角头像去开启成员"); return; }
 
   addMessage(g, { sender: "user", text, attachments: pendingAtts.length ? pendingAtts : undefined, replyTo: replyTo?.id });
-  if (view === "chat" && !g._expanded && roundStarts(g).length > KEEP_ROUNDS) renderChat();   // 早的轮次收起来
   $("input").value = ""; autoGrow();
   pendingAtts = []; renderPending(); setReply(null); hideMention();
   await runRound(g, targets);
@@ -1838,8 +1977,15 @@ window.addEventListener("drop", e => {
 });
 
 $("chat").addEventListener("scroll", () => { if (isNearBottom()) $("new-pill").style.display = "none"; });
+// 舞台：← → 一句一句往回看 / 往后看（光标在输入框里时不生效）
+document.addEventListener("keydown", e => {
+  if (view !== "chat" || e.target.closest?.("textarea, input, select")) return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); stageStep(-1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); stageStep(1); }
+});
 document.addEventListener("click", e => {
-  if (!e.target.closest(".msg")) document.querySelectorAll(".msg.show-actions").forEach(x => x.classList.remove("show-actions"));
+  if (!e.target.closest?.("#solo-pop, #solo-btn")) $("solo-pop").hidden = true;
+  if (!e.target.closest(".s-item")) document.querySelectorAll(".s-item.show-actions").forEach(x => x.classList.remove("show-actions"));
 });
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
@@ -1847,6 +1993,7 @@ document.addEventListener("keydown", e => {
   if ($("settings-ov").classList.contains("show")) closeSettings();
   else if ($("panel").classList.contains("open")) togglePanel(false);
   else if (boardOpen) toggleBoard(false);
+  $("solo-pop").hidden = true; closeScore();
 });
 
 init();
