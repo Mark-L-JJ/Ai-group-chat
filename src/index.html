@@ -200,6 +200,7 @@ input, textarea, select { font: inherit; color: var(--text); }
 .gfile { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line-2); font-family: Inter, "Noto Sans SC", sans-serif; font-size: 14px; font-weight: 400; letter-spacing: 0; }
 .gfile .gname { font-weight: 600; }
 .gfile .chip-btn { color: var(--accent); }
+.gfile .chip-btn.strong { border: 1px solid var(--accent); border-radius: 999px; padding: 3px 12px; }
 .s-thumb { width: 54px; height: 54px; object-fit: cover; border-radius: 8px; margin-top: 4px; border: 1px solid var(--line-2); }
 
 /* 乐谱视图：完整记录铺满主界面 */
@@ -1603,8 +1604,9 @@ function soundForMessage(msg, prev) {
    ===================================================================== */
 function extractMedia(text) {
   const files = [];
-  text = text.replace(/```file:([^\n`]+)\n([\s\S]*?)```/g, (_, name, body) => {
-    files.push({ type: "gen-file", name: name.trim().replace(/[\\/:*?"<>|]/g, "_").slice(0, 80) || "文件.txt", text: body.replace(/\n$/, ""), size: new Blob([body]).size });
+  text = text.replace(/```file:([^\n`]+)\n([\s\S]*?)(```|$)/g, (_, name, body, end) => {
+    files.push({ type: "gen-file", name: name.trim().replace(/[\\/:*?"<>|]/g, "_").slice(0, 80) || "文件.txt", text: body.replace(/\n$/, ""),
+      size: new Blob([body]).size, truncated: !end });   // 没有收尾的 ``` = 被截断了
     return "";
   });
   let draw = null;
@@ -1645,7 +1647,7 @@ async function saveAttachment(msgId, idx) {
   const a = findMsg(msgId)?.attachments?.[idx];
   if (!a) return;
   const isImg = a.type === "image";
-  const name = isImg ? (a.name && /\.\w+$/.test(a.name) ? a.name : "复调-画作.png") : a.name;
+  const name = isImg ? (a.name && /\.\w+$/.test(a.name) ? a.name : "复调-画作.png") : (["pptx", "docx", "pdf"].includes(extOf(a.name)) ? baseName(a.name) + ".md" : a.name);
   const T = window.__TAURI__;
   if (T?.dialog?.save && T?.fs) {
     try {
@@ -1690,18 +1692,248 @@ function attHtml(msg, big) {
     if (a.type === "image") return `<figure class="art">
         <img src="${a.dataUrl}" alt="${esc(a.prompt || a.name || "图片")}" onclick="viewImage(this.src)">
         ${msg.sender !== "user" ? `<figcaption>${a.prompt ? esc(a.prompt.slice(0, 60)) : ""}<button class="chip-btn" onclick="event.stopPropagation();saveAttachment('${msg.id}',${i})">保存图片</button></figcaption>` : ""}</figure>`;
-    if (a.type === "gen-file") return `<div class="gfile"><span class="gname">📄 ${esc(a.name)}</span><span class="muted small">${fmtSize(a.size)}</span>
+    if (a.type === "gen-file") {
+      const ext = extOf(a.name), go = k => `event.stopPropagation();convertAttachment('${msg.id}',${i},'${k}')`;
+      const main = ext === "pptx" ? `<button class="chip-btn strong" onclick="${go("pptx")}">生成 PPT</button>`
+        : ext === "docx" ? `<button class="chip-btn strong" onclick="${go("docx")}">生成 Word</button>`
+        : ext === "pdf" ? `<button class="chip-btn strong" onclick="${go("pdf")}">导出 PDF</button>`
+        : `<button class="chip-btn" onclick="event.stopPropagation();saveAttachment('${msg.id}',${i})">保存</button>`;
+      const more = DOC_EXTS.includes(ext) ? ["pptx", "docx", "pdf"].filter(k => k !== ext).map(k =>
+        `<button class="chip-btn" onclick="${go(k)}">转${{ pptx: " PPT", docx: " Word", pdf: " PDF" }[k]}</button>`).join("") : "";
+      return `<div class="gfile"><span class="gname">${{ pptx: "📊", docx: "📝", pdf: "📕" }[ext] || "📄"} ${esc(["pptx", "docx", "pdf"].includes(ext) ? a.name : a.name)}</span><span class="muted small">${fmtSize(a.size)}</span>
+        ${a.truncated ? '<span class="small" style="color:var(--danger)">内容可能不完整</span>' : ""}
+        ${main}
         <button class="chip-btn" onclick="event.stopPropagation();previewAttachment('${msg.id}',${i})">预览</button>
-        <button class="chip-btn" onclick="event.stopPropagation();copyAttachment('${msg.id}',${i})">复制</button>
-        <button class="chip-btn" onclick="event.stopPropagation();saveAttachment('${msg.id}',${i})">保存</button></div>`;
+        <button class="chip-btn" onclick="event.stopPropagation();copyAttachment('${msg.id}',${i})">复制</button>${more}</div>`;
+    }
     return `<span class="file-chip">📄 <span>${esc(a.name)}</span><span class="muted">${fmtSize(a.size)}</span></span>`;
   }).join("")}</div>`;
 }
 
 /* =====================================================================
+   把声部写的 Markdown 变成真正的 PPT / Word / PDF
+   AI 只会写文字，所以：它按约定的格式写，App 负责排版和生成文件
+   ===================================================================== */
+const loaded = {};
+function loadScript(src) {
+  return loaded[src] ||= new Promise((res, rej) => {
+    const s = Object.assign(document.createElement("script"), { src, onload: res, onerror: () => rej(new Error("加载 " + src + " 失败")) });
+    document.head.appendChild(s);
+  });
+}
+const extOf = name => (name.match(/\.(\w+)$/) || [, ""])[1].toLowerCase();
+const baseName = name => name.replace(/\.\w+$/, "");
+const DOC_EXTS = ["pptx", "docx", "pdf", "md", "markdown", "txt"];
+const CN_FONT = "Microsoft YaHei";
+
+// 保存二进制文件：桌面版弹"另存为"，浏览器里下载
+async function saveBytes(name, bytes, mime) {
+  const T = window.__TAURI__;
+  if (T?.dialog?.save && T?.fs) {
+    try {
+      const path = await T.dialog.save({ defaultPath: name });
+      if (!path) return false;
+      await T.fs.writeFile(path, bytes instanceof Uint8Array ? bytes : new Uint8Array(await bytes.arrayBuffer()));
+      toast("已保存：" + name);
+      return true;
+    } catch (e) { console.warn(e); }
+  }
+  const blob = bytes instanceof Blob ? bytes : new Blob([bytes], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  return true;
+}
+
+// ---------- PPT ----------
+function parseSlides(md) {
+  const lines = md.replace(/\r/g, "").split("\n");
+  let title = "", subtitle = "";
+  const slides = [];
+  let cur = null;
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, "");
+    if (!line.trim() || /^---+$/.test(line.trim())) continue;
+    let m;
+    if ((m = line.match(/^#\s+(.*)/)) && !title && !slides.length) { title = clean(m[1]); continue; }
+    if ((m = line.match(/^(?:副标题|subtitle)\s*[:：]\s*(.*)/i)) && !slides.length) { subtitle = clean(m[1]); continue; }
+    if ((m = line.match(/^#{2,3}\s+(.*)/))) { cur = { title: clean(m[1]), items: [], notes: [], table: [] }; slides.push(cur); continue; }
+    if (!cur) { if (!subtitle && !slides.length && title) subtitle = clean(line); continue; }
+    if ((m = line.match(/^>\s?(.*)/))) { cur.notes.push(clean(m[1])); continue; }
+    if (/^\s*\|.*\|\s*$/.test(line)) {   // 表格
+      if (!/^\s*\|?\s*:?-{2,}/.test(line)) cur.table.push(line.trim().replace(/^\||\|$/g, "").split("|").map(c => clean(c)));
+      continue;
+    }
+    if ((m = line.match(/^(\s*)(?:[-*+•]|\d+[.、)])\s+(.*)/))) { cur.items.push({ text: clean(m[2]), level: Math.min(2, Math.floor(m[1].replace(/\t/g, "  ").length / 2)) }); continue; }
+    cur.items.push({ text: clean(line), level: 0 });
+  }
+  return { title: title || (slides[0]?.title ?? "演示"), subtitle, slides };
+}
+function clean(t) { return t.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`([^`]+)`/g, "$1").trim(); }
+
+async function buildPptx(md, name) {
+  await loadScript("vendor/pptxgen.bundle.js");
+  const { title, subtitle, slides } = parseSlides(md);
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";               // 16:9，13.33 × 7.5 英寸
+  pptx.title = title;
+  const BG = "0B0A0C", TEXT = "ECE6DC", MUTED = "A79F93", LINE = "2F2A2E";
+  const VOICES = ["FF9B70", "5EE3B0", "8DB4FF", "C3A6FF"];
+
+  // 封面：左下角四根音柱（复调的标志）
+  const cover = pptx.addSlide();
+  cover.background = { color: BG };
+  [0.34, 0.58, 0.44, 0.66].forEach((h, i) => cover.addShape(pptx.ShapeType.roundRect,
+    { x: 0.9 + i * 0.34, y: 6.3 - h * 2.2, w: 0.2, h: h * 2.2, fill: { color: VOICES[i] }, line: { color: VOICES[i] }, rectRadius: 0.1 }));
+  cover.addText(title, { x: 0.9, y: 1.4, w: 11.5, h: 1.6, fontFace: CN_FONT, fontSize: 44, bold: true, color: TEXT, valign: "bottom" });
+  if (subtitle) cover.addText(subtitle, { x: 0.9, y: 3.1, w: 11.5, h: 0.8, fontFace: CN_FONT, fontSize: 20, color: MUTED, valign: "top" });
+  cover.addText("复调 · Fuga", { x: 9.4, y: 6.6, w: 3.4, h: 0.4, fontFace: CN_FONT, fontSize: 11, color: MUTED, align: "right" });
+
+  slides.forEach((s, i) => {
+    const sl = pptx.addSlide();
+    sl.background = { color: BG };
+    const c = VOICES[i % 4];
+    sl.addShape(pptx.ShapeType.roundRect, { x: 0.6, y: 0.62, w: 0.12, h: 0.62, fill: { color: c }, line: { color: c }, rectRadius: 0.06 });
+    sl.addText(s.title, { x: 0.95, y: 0.5, w: 11.6, h: 0.85, fontFace: CN_FONT, fontSize: 28, bold: true, color: TEXT, valign: "middle" });
+    sl.addShape(pptx.ShapeType.line, { x: 0.6, y: 1.55, w: 12.1, h: 0, line: { color: LINE, width: 1 } });
+    const hasTable = s.table.length > 0;
+    if (s.items.length) {
+      const n = s.items.length, size = n > 8 ? 15 : n > 6 ? 17 : hasTable ? 17 : 20;
+      sl.addText(s.items.map(it => ({ text: it.text, options: {
+        bullet: it.level ? { indent: 18 } : { code: "25CF", indent: 22 }, indentLevel: it.level,
+        color: it.level ? MUTED : TEXT, fontSize: it.level ? size - 2 : size, paraSpaceAfter: 10, breakLine: true } })),
+        { x: 0.95, y: 1.85, w: 11.6, h: hasTable ? 1.7 : 4.9, fontFace: CN_FONT, valign: "top" });
+    }
+    if (hasTable) {   // 表格：表头深一点，每行细线分隔
+      const cols = Math.max(...s.table.map(r => r.length));
+      const rows = s.table.map((r, ri) => Array.from({ length: cols }, (_, ci) => ({ text: r[ci] || "", options: ri === 0
+        ? { bold: true, color: TEXT, fill: { color: "1B181C" } } : { color: ri % 2 ? TEXT : "CFC8BD" } })));
+      sl.addTable(rows, { x: 0.95, y: s.items.length ? 3.7 : 1.9, w: 11.4, fontFace: CN_FONT, fontSize: s.table.length > 7 ? 13 : 16,
+        border: { type: "solid", pt: 0.75, color: LINE }, valign: "middle", margin: 0.08, rowH: 0.48 });
+    }
+    sl.addText(`${i + 2}`, { x: 12.0, y: 6.85, w: 0.8, h: 0.35, fontFace: CN_FONT, fontSize: 10, color: MUTED, align: "right" });
+    sl.addText("复调 · Fuga", { x: 0.6, y: 6.85, w: 3, h: 0.35, fontFace: CN_FONT, fontSize: 10, color: MUTED });
+    if (s.notes.length) sl.addNotes(s.notes.join("\n"));
+  });
+  return { bytes: await pptx.write({ outputType: "uint8array" }), count: slides.length + 1 };
+}
+
+// ---------- Word ----------
+async function buildDocx(md) {
+  await loadScript("vendor/docx.iife.js");
+  const D = window.docx;
+  const runs = (t, extra = {}) => t.split(/(\*\*[^*]+\*\*)/).filter(Boolean).map(p =>
+    new D.TextRun({ text: p.replace(/^\*\*|\*\*$/g, "").replace(/`([^`]+)`/g, "$1"), bold: /^\*\*/.test(p) || extra.bold, font: CN_FONT }));
+  const children = [];
+  const lines = md.replace(/\r/g, "").split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    let m;
+    if (/^\s*\|.*\|\s*$/.test(line)) {                       // 表格
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+        if (!/^\s*\|?\s*:?-{2,}/.test(lines[i])) rows.push(lines[i].trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
+        i++;
+      }
+      i--;
+      const cols = Math.max(...rows.map(r => r.length));
+      children.push(new D.Table({
+        width: { size: 100, type: D.WidthType.PERCENTAGE },
+        rows: rows.map((r, ri) => new D.TableRow({ children: Array.from({ length: cols }, (_, ci) =>
+          new D.TableCell({ children: [new D.Paragraph({ children: runs(r[ci] || "", { bold: ri === 0 }) })] })) })),
+      }));
+      children.push(new D.Paragraph({ text: "" }));
+      continue;
+    }
+    if (!line.trim()) continue;
+    if ((m = line.match(/^#\s+(.*)/))) children.push(new D.Paragraph({ heading: D.HeadingLevel.TITLE, children: runs(m[1]) }));
+    else if ((m = line.match(/^##\s+(.*)/))) children.push(new D.Paragraph({ heading: D.HeadingLevel.HEADING_1, children: runs(m[1]) }));
+    else if ((m = line.match(/^###+\s+(.*)/))) children.push(new D.Paragraph({ heading: D.HeadingLevel.HEADING_2, children: runs(m[1]) }));
+    else if ((m = line.match(/^(\s*)[-*+•]\s+(.*)/))) children.push(new D.Paragraph({ bullet: { level: Math.min(2, Math.floor(m[1].length / 2)) }, children: runs(m[2]) }));
+    else if ((m = line.match(/^(\s*)(\d+)[.、)]\s+(.*)/))) children.push(new D.Paragraph({ indent: { left: 360 }, children: runs(m[2] + ". " + m[3]) }));
+    else if ((m = line.match(/^>\s?(.*)/))) children.push(new D.Paragraph({ indent: { left: 480 }, children: runs(m[1]) }));
+    else children.push(new D.Paragraph({ spacing: { after: 120 }, children: runs(line.trim()) }));
+  }
+  const doc = new D.Document({
+    styles: { default: { document: { run: { font: CN_FONT, size: 22 } } } },
+    sections: [{ children }],
+  });
+  return await D.Packer.toBlob(doc);
+}
+
+// ---------- PDF：排好版的打印页面，在打印窗口里选「另存为 PDF」 ----------
+function mdToHtml(md) {
+  const out = [];
+  const lines = md.replace(/\r/g, "").split("\n");
+  const inline = t => esc(t).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  let list = null;
+  const closeList = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]; let m;
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      closeList();
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { if (!/^\s*\|?\s*:?-{2,}/.test(lines[i])) rows.push(lines[i].trim().replace(/^\||\|$/g, "").split("|")); i++; }
+      i--;
+      out.push("<table>" + rows.map((r, ri) => "<tr>" + r.map(c => `<${ri ? "td" : "th"}>${inline(c.trim())}</${ri ? "td" : "th"}>`).join("") + "</tr>").join("") + "</table>");
+      continue;
+    }
+    if (!line.trim()) { closeList(); continue; }
+    if ((m = line.match(/^(#{1,4})\s+(.*)/))) { closeList(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); }
+    else if ((m = line.match(/^\s*[-*+•]\s+(.*)/))) { if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(m[1])}</li>`); }
+    else if ((m = line.match(/^\s*\d+[.、)]\s+(.*)/))) { if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(m[1])}</li>`); }
+    else if ((m = line.match(/^>\s?(.*)/))) { closeList(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); }
+    else { closeList(); out.push(`<p>${inline(line.trim())}</p>`); }
+  }
+  closeList();
+  return out.join("\n");
+}
+function exportPdf(md, name) {
+  const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>${esc(baseName(name))}</title><style>
+    @page { size: A4; margin: 18mm 18mm 20mm; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #1d1a17; font-size: 11pt; line-height: 1.7; }
+    h1 { font-family: "Noto Serif SC", "SimSun", serif; font-size: 24pt; margin: 0 0 6pt; padding-bottom: 8pt; border-bottom: 3px solid; border-image: linear-gradient(90deg,#ff9b70,#5ee3b0,#8db4ff,#c3a6ff) 1; }
+    h2 { font-family: "Noto Serif SC", "SimSun", serif; font-size: 16pt; margin: 18pt 0 6pt; }
+    h3, h4 { font-size: 12.5pt; margin: 12pt 0 4pt; }
+    table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
+    th, td { border: 1px solid #d8cebf; padding: 5pt 7pt; text-align: left; vertical-align: top; }
+    th { background: #f3ede3; }
+    blockquote { margin: 8pt 0; padding-left: 10pt; border-left: 3px solid #d8cebf; color: #5b544b; }
+    code { background: #f3ede3; padding: 0 3pt; border-radius: 3pt; }
+    li { margin: 2pt 0; }
+  </style></head><body>${mdToHtml(md)}</body></html>`;
+  const frame = Object.assign(document.createElement("iframe"), { style: "position:fixed;right:0;bottom:0;width:0;height:0;border:0" });
+  frame.srcdoc = html;
+  frame.onload = () => {
+    try { frame.contentWindow.focus(); frame.contentWindow.print(); toast("在打印窗口里，打印机选「另存为 PDF」或「Microsoft Print to PDF」"); }
+    catch { saveBytes(baseName(name) + ".html", new Blob([html], { type: "text/html" }), "text/html"); toast("没法直接打印，已存成网页：用浏览器打开后按 Ctrl+P 存成 PDF"); }
+    setTimeout(() => frame.remove(), 60000);
+  };
+  document.body.appendChild(frame);
+}
+
+// 文件卡片上的"生成 PPT / Word / PDF"
+async function convertAttachment(msgId, idx, kind) {
+  const a = findMsg(msgId)?.attachments?.[idx];
+  if (!a) return;
+  const stem = baseName(a.name);
+  try {
+    if (kind === "pptx") {
+      toast("正在排版 PPT…");
+      const { bytes, count } = await buildPptx(a.text, a.name);
+      if (await saveBytes(stem + ".pptx", bytes, "application/vnd.openxmlformats-officedocument.presentationml.presentation")) toast(`PPT 已生成：${count} 页`);
+    } else if (kind === "docx") {
+      toast("正在生成 Word…");
+      await saveBytes(stem + ".docx", await buildDocx(a.text), "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    } else if (kind === "pdf") exportPdf(a.text, stem + ".pdf");
+  } catch (e) { toast("生成失败：" + e.message); }
+}
+
+/* =====================================================================
    发送 & AI 发言
    ===================================================================== */
-function systemPromptFor(member, g) {
+function systemPromptFor(member, g, opts = {}) {
   const others = g.members.filter(m => m.enabled && m.id !== member.id).map(m => m.name);
   const u = config.userName;
   return `你在一个微信群「${g.name}」里和朋友聊天，你不是在当AI助手。群里有真人「${u}」` +
@@ -1720,16 +1952,36 @@ function systemPromptFor(member, g) {
 - 不要说"作为AI"，不要客套，不要列 1.2.3.，不要总结，不要问"还有什么可以帮你"。
 - 想让某个群友接话时可以@他，比如"@${others[0] || u} 你怎么看"。别每次都@。
 - 群友发的图片和文件你能看到的话，就像朋友一样自然地聊它。
-- 如果${u}需要一份能保存下来的东西（文档、清单、简历、表格、代码），可以直接发文件，格式是单独起一行写 \`\`\`file:文件名.扩展名 ，换行写内容，最后一行写 \`\`\` 。只支持文字类文件（md、txt、csv、html、json、各种代码）。文件内容可以长，文件外面的话照样要短。${config.allowImages !== false && pickImageModel() ? `
+- 群里同一份文件只需要一个人做。${u}要文件时，系统会指定一位声部来做，没轮到你就别发文件。${config.allowImages !== false && pickImageModel() ? `
 - 如果一张图比文字更能说明问题，或者${u}请你画图，可以单独写一行 [画图: 详细的画面描述]，系统会帮你画出来发到群里。一次最多一张，别为了画而画。` : ""}
 - 别人说过的不要重复。没什么想说的，就只回复 [PASS]（潜水）。但如果你被@了、被引用了，或者还没人回复${u}，就必须说点什么。
 - 别人的发言以「[名字]: 内容」出现。你直接说话，开头不要写自己的名字，也不要替别人说话。
-- 用${u}用的语言聊。`;
+- 用${u}用的语言聊。` + roleNote(member, g, opts);
+}
+
+// 这一轮的分工：谁负责交付文件，谁只出主意
+const FILE_FORMATS = `文件的写法：单独起一行写 \`\`\`file:文件名.扩展名 ，换行写完整内容，最后单独一行写 \`\`\` 收尾。
+- 要 PPT：扩展名用 .pptx，内容用这个格式写——第一行「# 演示标题」，第二行「副标题：一句话」；之后每一页以「## 这页的标题」开头，下面写 3~5 条「- 要点」（每条不超过 30 个字，子要点前面加两个空格），需要的话加一行「> 演讲时要说的话」。一共 6~12 页，内容要具体，不要空话。App 会自动排版成真正的 PPT。
+- 要 Word / 文档 / 报告 / 简历：扩展名用 .docx，用 Markdown 写：# 标题、## 小节、### 小标题、正文段落、- 列表、**加粗**，表格用 | 列 | 列 | 的格式。App 会生成真正的 Word。
+- 要 PDF：扩展名用 .pdf，写法和 Word 一样，App 会排版后让${config.userName}存成 PDF。
+- 其他（表格 csv、网页 html、代码、纯文本）：直接写文件内容。`;
+function roleNote(member, g, opts = {}) {
+  if (opts.producer) return `
+
+【这一轮你负责交付文件】${config.userName}要一份文件，这一轮由你来做。
+- 先用一句话说你做了什么，然后直接给出完整的文件。不要只给大纲，不要说"我稍后发""需要的话我再做"。
+- 文件要完整、具体、能直接用，不受上面的字数限制。前面群友提的建议，合理的就吸收进去。
+- 如果之前已经有人发过这份文件，就在它的基础上改进，发一份新的完整版。
+${FILE_FORMATS}`;
+  if (opts.advisor) return `
+
+【这一轮由 ${opts.advisor} 负责做文件】你不要发文件，也别说"我来做"。只用一句话给它提一个最重要的建议（内容、结构或风格都行），或者回复 [PASS]。`;
+  return "";
 }
 
 // 把群里的聊天记录，整理成"这个AI眼中"的对话
-function buildMessagesFor(member, g, history) {
-  const out = [{ role: "system", content: systemPromptFor(member, g) }];
+function buildMessagesFor(member, g, history, opts = {}) {
+  const out = [{ role: "system", content: systemPromptFor(member, g, opts) }];
   const recent = history.filter(m => !m.error).slice(-MAX_HISTORY);
   const vision = canSeeImages(member.model);
   const toParts = c => typeof c === "string" ? [{ type: "text", text: c }] : c;
@@ -1779,14 +2031,14 @@ function buildMessagesFor(member, g, history) {
   return out;
 }
 
-async function askMember(member, g, history) {
+async function askMember(member, g, history, opts = {}) {
   const ctrl = new AbortController();
   if (!controllers.has(g.id)) controllers.set(g.id, []);
   controllers.get(g.id).push(ctrl);
   const res = await fetch(API_URL, {
     method: "POST", signal: ctrl.signal,
     headers: { "Authorization": "Bearer " + config.apiKey, "Content-Type": "application/json", "X-Title": "AI Group Chat" },
-    body: JSON.stringify({ model: member.model, messages: buildMessagesFor(member, g, history), max_tokens: 1500 }),
+    body: JSON.stringify({ model: member.model, messages: buildMessagesFor(member, g, history, opts), max_tokens: opts.producer ? 8000 : 1500 }),   // 做文件的那位给足字数
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) throw new Error(friendlyError(data.error?.message, res.status));
@@ -1806,6 +2058,11 @@ function mentionedMembers(text, g) {
   return hit.length ? hit : activeMembers(g);
 }
 
+// 这句话是不是在要一份文件（PPT、Word、PDF、表格、简历……）
+function wantsFile(text) {
+  return /(ppt|pptx|幻灯片|演示文稿|slides?|pdf|word|docx|文档|简历|报告|计划书|方案书|策划|表格|excel|csv|文件)/i.test(text)
+    && /(做|写|生成|整理|出|给我|帮我|导出|来一份|一份|一个|改|重新)/.test(text);
+}
 async function send() {
   const g = current;
   const text = $("input").value.trim();
@@ -1819,10 +2076,19 @@ async function send() {
   }
   if (!targets.length) { toast("群里没有可用的AI，点右上角头像去开启成员"); return; }
 
+  // 要文件？那就只让一位声部来做
+  let producer = null;
+  if (wantsFile(text)) {
+    const tagged = g.members.filter(m => m.enabled && m.model && text.includes("@" + m.name));
+    producer = tagged.length === 1 ? tagged[0]
+      : activeMembers(g).find(m => m.id === g.producer) || targets[0];
+  }
+
   addMessage(g, { sender: "user", text, attachments: pendingAtts.length ? pendingAtts : undefined, replyTo: replyTo?.id });
   $("input").value = ""; autoGrow();
   pendingAtts = []; renderPending(); setReply(null); hideMention();
-  await runRound(g, targets);
+  if (producer) toast(`这份文件由 ${producer.name} 来做，其他人先出主意`);
+  await runRound(g, targets, null, false, producer);
 }
 
 async function debateRound() {
@@ -1835,11 +2101,22 @@ async function debateRound() {
   await runRound(g, targets, "natural", true);
 }
 
-async function runRound(g, targets, forceMode, forceAll) {
+async function runRound(g, targets, forceMode, forceAll, producer) {
   setBusy(g, true);
   const mode = forceMode || g.mode;
   const said = [];
   try {
+    if (producer) {
+      // 交付模式：其他人先各说一句建议（最多两位），负责的那位最后动手
+      const advisors = shuffle(targets.filter(m => m.id !== producer.id)).slice(0, 2);
+      for (const m of advisors) {
+        if (!busyGroups.has(g.id)) break;
+        await sleep(300 + Math.random() * 600);
+        await replyFrom(g, m, g.messages, { advisor: producer.name });
+      }
+      if (busyGroups.has(g.id)) await replyFrom(g, producer, g.messages, { producer: true });
+      return;
+    }
     if (mode === "parallel") {
       const snapshot = [...g.messages];
       await Promise.all(targets.map(async m => said.push(...await replyFrom(g, m, snapshot))));
@@ -1867,10 +2144,10 @@ async function runRound(g, targets, forceMode, forceAll) {
   }
 }
 
-async function replyFrom(g, member, history) {
+async function replyFrom(g, member, history, opts = {}) {
   setTyping(g, member.id, true);
   try {
-    const { text: raw, cost } = await askMember(member, g, history);
+    const { text: raw, cost } = await askMember(member, g, history, opts);
     const { text, files, draw } = extractMedia(raw);
     let parts = text.replace(/\[PASS\]/gi, "").split(/\n?[ \t]*\/\/\/[ \t]*\n?/).map(s => s.trim()).filter(Boolean);
     if (parts.length > MAX_BUBBLES) parts = [...parts.slice(0, MAX_BUBBLES - 1), parts.slice(MAX_BUBBLES - 1).join("\n")];
@@ -2033,6 +2310,11 @@ function renderPanel() {
       <div class="segmented">${Object.entries(MODES).map(([k, v]) =>
         `<button class="${g.mode === k ? "on" : ""}" onclick="setMode('${k}')">${v.label}</button>`).join("")}</div>
       <div class="mode-desc">${MODES[g.mode]?.desc || ""}</div></div>
+    <div class="field"><label>要文件时由谁来做（PPT、Word、PDF……）</label>
+      <select onchange="current.producer=this.value;saveGroup(current,false)">
+        <option value="">自动（第一位在场的声部，或者你 @ 的那位）</option>
+        ${g.members.filter(m => m.model).map(m => `<option value="${m.id}" ${g.producer === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("")}
+      </select></div>
     <div class="small muted" style="margin:0 2px 4px">本群累计花费约 $${totalCost.toFixed(4)} · ${g.messages.length} 条消息</div>
 
     <div class="section-title">群成员 · ${g.members.length}</div>
