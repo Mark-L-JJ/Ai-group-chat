@@ -191,6 +191,33 @@ input, textarea, select { font: inherit; color: var(--text); }
 .file-chip { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line-2); font-size: 13px; max-width: 260px; }
 .file-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* 声部发来的图片和文件 */
+.atts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.atts .art { margin: 0; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+.atts .art img { max-width: 260px; max-height: 260px; border-radius: 14px; border: 1px solid var(--line-2); cursor: zoom-in; display: block; object-fit: contain; background: var(--card); }
+.atts.big .art img { max-width: min(460px, 100%); max-height: 34vh; }
+.atts .art figcaption { display: flex; gap: 10px; align-items: baseline; font-size: 12px; color: var(--muted); font-family: Inter, "Noto Sans SC", sans-serif; font-weight: 400; letter-spacing: 0; }
+.gfile { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line-2); font-family: Inter, "Noto Sans SC", sans-serif; font-size: 14px; font-weight: 400; letter-spacing: 0; }
+.gfile .gname { font-weight: 600; }
+.gfile .chip-btn { color: var(--accent); }
+.s-thumb { width: 54px; height: 54px; object-fit: cover; border-radius: 8px; margin-top: 4px; border: 1px solid var(--line-2); }
+
+/* 乐谱视图：完整记录铺满主界面 */
+#fullscore { flex: 1; overflow-y: auto; padding: 12px 32px 20px; }
+#full-list { max-width: 820px; margin: 0 auto; }
+#full-list .s-item { padding: 10px 12px; }
+#full-list .s-item.cont { padding-top: 0; }
+#full-list .s-text { -webkit-line-clamp: unset; display: block; font-size: 15px; line-height: 1.75; color: var(--text); }
+#full-list .s-text p { margin: 0; }
+#full-list .s-text pre { background: var(--card); padding: 10px 12px; border-radius: 10px; overflow-x: auto; font-size: 13px; }
+#full-list .s-text code { background: var(--card); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+#full-list .s-text pre code { background: none; padding: 0; }
+#full-list .s-who { font-size: 12px; }
+#full-list .s-item.me { background: color-mix(in srgb, var(--text) 5%, transparent); }
+body.view-score #choir, body.view-score #beam { display: none; }
+body.view-score #score #chat { display: none; }
+body.view-score #score .shows { flex: 1; max-height: none; border-top: none; }
+
 /* ---------- 全景（沙盘） ---------- */
 #sandbox { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .sb-field { flex: 1; position: relative; overflow: hidden; min-height: 0; }
@@ -359,8 +386,9 @@ input, textarea, select { font: inherit; color: var(--text); }
     </div>
     <div class="seg" id="tempo-seg"></div>
     <div class="seg" id="view-seg">
-      <button data-v="chat" onclick="setView('chat')">舞台</button>
-      <button data-v="sandbox" onclick="setView('sandbox')">全景</button>
+      <button data-v="chat" onclick="setView('chat')" title="一次只演一段">舞台</button>
+      <button data-v="score" onclick="setView('score')" title="完整记录铺满主界面，方便翻看和复制">乐谱</button>
+      <button data-v="sandbox" onclick="setView('sandbox')" title="观点按被接话的多少排布">全景</button>
     </div>
     <button class="pill" id="board-btn" onclick="toggleBoard()" title="按立场整理大家的观点">主题板</button>
     <button class="icon-btn" id="more-btn" title="演出设置" aria-label="演出设置" onclick="togglePanel()">
@@ -380,6 +408,7 @@ input, textarea, select { font: inherit; color: var(--text); }
         <div class="nav" id="stage-nav"></div>
       </div>
     </div>
+    <div id="fullscore" hidden><div id="full-list"></div></div>
     <div id="sandbox" hidden></div>
   </div>
 
@@ -457,6 +486,22 @@ input, textarea, select { font: inherit; color: var(--text); }
       </div>
     </div>
     <div class="field">
+      <label>声音（每个声部一个五声音阶的音）</label>
+      <div style="display:flex;gap:12px;align-items:center">
+        <label class="switch" style="margin:0"><input type="checkbox" id="set-sound"><span></span></label>
+        <input type="range" id="set-volume" min="0" max="1" step="0.05" style="flex:1" aria-label="音量">
+        <button class="btn small" type="button" onclick="previewSound()">试听</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>让声部画图（每张大约几美分，比聊天贵）</label>
+      <div style="display:flex;gap:12px;align-items:center">
+        <label class="switch" style="margin:0"><input type="checkbox" id="set-images"><span></span></label>
+        <input type="text" id="set-image-model" list="image-model-options" placeholder="画图模型，留空自动挑选" style="flex:1">
+      </div>
+      <datalist id="image-model-options"></datalist>
+    </div>
+    <div class="field">
       <label>模型列表</label>
       <div style="display:flex;gap:8px;align-items:center">
         <span class="small muted" id="model-status" style="flex:1"></span>
@@ -478,6 +523,16 @@ input, textarea, select { font: inherit; color: var(--text); }
       <button class="btn" id="confirm-no">取消</button>
       <button class="btn primary" id="confirm-yes">确定</button>
     </div>
+  </div>
+</div>
+
+<!-- 文件预览 -->
+<div class="overlay" id="file-ov" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal" style="width:min(760px,100%)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><h2 id="file-title" style="margin:0;flex:1;font-size:17px"></h2>
+      <div id="file-actions" style="display:flex;gap:8px"></div>
+      <button class="icon-btn" aria-label="关闭" onclick="$('file-ov').classList.remove('show')">✕</button></div>
+    <pre id="file-body" style="white-space:pre-wrap;word-break:break-word;background:var(--card);border:1px solid var(--line-2);border-radius:12px;padding:14px;max-height:65vh;overflow:auto;font-size:13px;margin:0"></pre>
   </div>
 </div>
 
@@ -583,7 +638,7 @@ function saveGroup(g, touch = true) {
 
 /* ---------- 全局状态 ---------- */
 let config = lsLoad("aigc-config", {});
-config = Object.assign({ apiKey: "", userName: "我", userAvatar: "", theme: "dark" }, config);
+config = Object.assign({ apiKey: "", userName: "我", userAvatar: "", theme: "dark", sound: true, volume: 0.35, allowImages: true, imageModel: "" }, config);
 let groups = [];
 let current = null;                 // 当前打开的群
 let allModels = [];
@@ -680,8 +735,11 @@ function autoPickModels(members) {
     if (mem.model || !mem.modelPattern) continue;
     const re = new RegExp(mem.modelPattern, "i");
     const matches = allModels.filter(m => re.test(m.id));
-    const standard = matches.filter(m => !/pro|mini|nano|lite|oss|codex|fast|preview|image/i.test(m.id.split("/")[1]));
-    const pool = standard.length ? standard : matches;
+    // 按"词"判断，不然 ge-mini 会被当成 mini 版；会画图的模型不当聊天声部
+    const variant = m => m.id.split("/")[1].split(/[-_.:]/).some(t => /^(pro|mini|nano|lite|oss|codex|fast|preview|image|audio|vision|tts)$/i.test(t));
+    const canChat = m => !(m.architecture?.output_modalities || []).includes("image");
+    const standard = matches.filter(m => canChat(m) && !variant(m));
+    const pool = standard.length ? standard : matches.filter(canChat).length ? matches.filter(canChat) : matches;
     const newest = pool[0]?.created || 0;
     const price = m => parseFloat(m.pricing?.prompt) || 0;
     const pick = pool.filter(m => newest - (m.created || 0) < 60 * 86400).sort((a, b) => price(a) - price(b))[0];
@@ -808,8 +866,11 @@ function setView(v) { view = v; renderView(); }
 function renderView() {
   document.querySelectorAll("#view-seg button").forEach(b => b.classList.toggle("on", b.dataset.v === view));
   $("stage").hidden = view !== "chat";
+  $("fullscore").hidden = view !== "score";
   $("sandbox").hidden = view !== "sandbox";
+  document.body.classList.toggle("view-score", view === "score");
   renderChat();
+  if (view === "score") renderFull();
   if (view === "sandbox") renderSandbox();
 }
 
@@ -868,7 +929,7 @@ function movEl(msg, n) {
   d.textContent = msg.sender === "system" ? "赋格 · 互相评论" : `第${NUM[n - 1] || n}乐章 · ${shortTime(msg.time)}`;
   return d;
 }
-function scoreItemEl(msg, prev) {
+function scoreItemEl(msg, prev, wide) {
   const isMe = msg.sender === "user";
   const member = current.members.find(m => m.id === msg.sender);
   const color = isMe ? "var(--text)" : (member?.color || "#999");
@@ -878,9 +939,10 @@ function scoreItemEl(msg, prev) {
   el.dataset.id = msg.id;
   el.style.setProperty("--c", color);
   el.tabIndex = 0;
-  const atts = msg.attachments?.length ? `<div class="s-atts">${msg.attachments.map(a => a.type === "image" ? "［图片］" : "［" + esc(a.name) + "］").join(" ")}</div>` : "";
+  const atts = !msg.attachments?.length ? "" : wide ? attHtml(msg, false)
+    : `<div class="s-atts">${msg.attachments.map(a => a.type === "image" ? `<img class="s-thumb" src="${a.dataUrl}" alt="">` : a.type === "gen-file" ? "［文件 " + esc(a.name) + "］" : "［" + esc(a.name) + "］").join(" ")}</div>`;
   el.innerHTML = `<div class="s-who"><i></i>${esc(isMe ? "你 · 指挥" : (member?.name || "已离场的声部"))}${target ? `<span style="color:var(--muted);font-weight:400">→ ${esc(senderName(target))}</span>` : ""}${msg.starred ? '<span class="star">★</span>' : ""}</div>
-    ${msg.text ? `<div class="s-text">${esc(msg.text)}</div>` : ""}${atts}
+    ${msg.text ? `<div class="s-text">${wide && !isMe ? colorAts(renderMarkdown(msg.text)) : esc(msg.text).replace(/\n/g, wide ? "<br>" : " ")}</div>` : ""}${atts}
     <div class="s-actions">
       ${msg.text ? `<span onclick="event.stopPropagation();copyMsg('${msg.id}')">复制</span>` : ""}
       ${msg.error ? "" : `<span onclick="event.stopPropagation();quoteMsg('${msg.id}')">引用</span>`}
@@ -888,10 +950,26 @@ function scoreItemEl(msg, prev) {
       <span onclick="event.stopPropagation();deleteMsg('${msg.id}')">删除</span>
     </div>`;
   el.title = shortTime(msg.time) + (member && !isMe ? " · " + shortModel(member.model) : "") + (msg.cost != null ? ` · $${Number(msg.cost).toFixed(4)}` : "");
-  el.onclick = () => focusMsg(msg.id);
+  if (!wide) el.onclick = () => focusMsg(msg.id);
   el.onkeydown = e => { if (e.key === "Enter") focusMsg(msg.id); };
   el.addEventListener("contextmenu", e => { e.preventDefault(); el.classList.toggle("show-actions"); });
   return el;
+}
+function colorAts(html) {
+  for (const m of current.members) html = html.split("@" + esc(m.name)).join(`<span class="at" style="color:${m.color}">@${esc(m.name)}</span>`);
+  return html;
+}
+function renderFull() {
+  const box = $("full-list");
+  const msgs = current.messages;
+  if (!msgs.length) { box.innerHTML = `<div class="rest" style="margin-top:18vh"><div class="big">乐谱还是空的</div><div>在下面的指挥台起一个主题</div></div>`; return; }
+  box.innerHTML = "";
+  let mov = 0;
+  msgs.forEach((m, i) => {
+    if (m.sender === "user" || m.sender === "system") box.appendChild(movEl(m, ++mov));
+    if (m.sender !== "system") box.appendChild(scoreItemEl(m, msgs[i - 1], true));
+  });
+  const f = $("fullscore"); f.scrollTop = f.scrollHeight;
 }
 function highlightScore() {
   const ids = new Set(stanza(currentStanzaId()).map(m => m.id));
@@ -939,9 +1017,8 @@ function currentStanzaId() {
 }
 function verseSize(len) { return len <= 40 ? "xl" : len <= 90 ? "l" : len <= 220 ? "m" : "s"; }
 function verseHtml(msg) {
-  let body = renderMarkdown(msg.text || "");
-  for (const m of current.members) body = body.split("@" + esc(m.name)).join(`<span class="at" style="color:${m.color}">@${esc(m.name)}</span>`);
-  return `<p>${body}</p>`;
+  const body = msg.text ? `<p>${colorAts(renderMarkdown(msg.text))}</p>` : "";
+  return body + attHtml(msg, true);
 }
 
 function renderStage(force) {
@@ -968,7 +1045,7 @@ function renderStage(force) {
     const member = current.members.find(m => m.id === head.sender);
     const order = current.members.filter(m => m.enabled).indexOf(member);
     const target = targetOf(head);
-    const len = lines.reduce((s, m) => s + (m.text || "").length, 0);
+    const len = lines.reduce((s, m) => s + (m.text || "").length, 0) + (lines.some(m => m.attachments?.length) ? 60 : 0);
     html = `<div class="who" style="--c:${member?.color || "#999"}">${esc(member?.name || "已离场的声部")}${order >= 0 ? " · 第" + (NUM[order] || order + 1) + "声部" : ""}
         ${target ? `<span class="to">→ ${esc(senderName(target))}</span>` : ""}${lines.some(m => m.starred) ? '<span class="star">★</span>' : ""}</div>
       <div class="verse ${head.error ? "err" : verseSize(len)}">${lines.map(verseHtml).join("")}</div>`;
@@ -1109,6 +1186,15 @@ function addMessage(g, msg) {
     if (msg.sender === "user" || msg.sender === "system") box.appendChild(movEl(msg, roundStarts(g).length));
     if (msg.sender !== "system") box.appendChild(scoreItemEl(msg, prev));
     if (nearBottom || msg.sender === "user") scrollToBottom(); else $("new-pill").style.display = "block";
+    if (view === "score") {
+      const fl = $("full-list"), f = $("fullscore");
+      if (g.messages.length === 1) fl.innerHTML = "";
+      const near = f.scrollHeight - f.scrollTop - f.clientHeight < 160;
+      if (msg.sender === "user" || msg.sender === "system") fl.appendChild(movEl(msg, roundStarts(g).length));
+      if (msg.sender !== "system") fl.appendChild(scoreItemEl(msg, prev, true));
+      if (near || msg.sender === "user") f.scrollTop = f.scrollHeight;
+    }
+    soundForMessage(msg, prev);
     if (msg.sender === "user" || msg.sender === "system") { stageFocus = null; renderHeader(); }
     renderStage();
     if (view === "sandbox") scheduleSandbox();
@@ -1146,6 +1232,7 @@ function toggleStar(id) {
   saveGroup(current, false);
   renderScoreList(); renderStage();
   if (view === "sandbox") renderSandbox();
+  if (view === "score") renderFull();
   toast(m.starred ? "已标星（只是你的记号，不影响别人的发言）" : "已取消星标");
 }
 /* =====================================================================
@@ -1463,6 +1550,155 @@ async function generateInsights() {
 }
 
 /* =====================================================================
+   声音：五声音阶（宫 商 角 徵 羽 = do re mi sol la），怎么组合都和谐
+   每个声部有自己固定的音，连发几句就往上走，像一小段旋律
+   ===================================================================== */
+const PENTA = [0, 2, 4, 7, 9];          // 一个八度里的五个音（相对 do 的半音数）
+const BASE_HZ = 261.63;                 // 中央 C（do）
+let audioCtx = null;
+function noteHz(step) {                 // 第 step 个五声音阶音（可以跨八度）
+  const oct = Math.floor(step / 5), deg = ((step % 5) + 5) % 5;
+  return BASE_HZ * Math.pow(2, oct + PENTA[deg] / 12);
+}
+function playNote(step, { when = 0, vol = 1, len = 1.3 } = {}) {
+  if (!config.sound) return;
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const t = audioCtx.currentTime + when, hz = noteHz(step);
+    const out = audioCtx.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.22 * vol * (config.volume ?? 0.35), t + 0.012);   // 很快起音
+    out.gain.exponentialRampToValueAtTime(0.0001, t + len);                                    // 慢慢消失，像拨了一下琴弦
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 2600;
+    out.connect(lp).connect(audioCtx.destination);
+    // 基音 + 高八度的泛音 + 一点点五度，听起来像木琴/钟琴
+    [[1, "sine", 1], [2, "triangle", 0.18], [3, "sine", 0.06]].forEach(([mul, type, g]) => {
+      const o = audioCtx.createOscillator(), og = audioCtx.createGain();
+      o.type = type; o.frequency.value = hz * mul; og.gain.value = g;
+      o.connect(og).connect(out); o.start(t); o.stop(t + len + 0.05);
+    });
+  } catch {}
+}
+// 某个声部唱第 k 句：每个声部一个固定的音，连发往上走
+function voiceStep(memberId, k = 0) {
+  const i = Math.max(0, current.members.findIndex(m => m.id === memberId));
+  return 5 + i * 2 + k;   // 从高一个八度的 do 开始，声部之间错开
+}
+function soundForMessage(msg, prev) {
+  if (msg.sender === "user") { playNote(0, { vol: .7, len: 1.6 }); playNote(3, { when: .04, vol: .5, len: 1.6 }); return; }   // 你：低音 do + sol
+  if (msg.sender === "system") { [5, 7, 9, 10].forEach((s, i) => playNote(s, { when: i * .09, vol: .6 })); return; }     // 赋格：一串上行琶音
+  if (msg.error) return;
+  let k = 0;
+  for (let i = current.messages.indexOf(msg); i > 0 && isCont(current.messages[i - 1], current.messages[i]); i--) k++;
+  if (msg.attachments?.some(a => a.type === "image")) { playNote(voiceStep(msg.sender, k) + 5, { vol: .6, len: 2 }); return; }   // 画好了：高一个八度
+  playNote(voiceStep(msg.sender, k));
+}
+
+/* =====================================================================
+   声部发来的文件和图片
+   - 文件：AI 用 ```file:文件名.扩展名 ... ``` 写出来，这里变成可以保存的文件
+   - 图片：AI 写一行 [画图: 描述]，这里请画图模型画出来
+   ===================================================================== */
+function extractMedia(text) {
+  const files = [];
+  text = text.replace(/```file:([^\n`]+)\n([\s\S]*?)```/g, (_, name, body) => {
+    files.push({ type: "gen-file", name: name.trim().replace(/[\\/:*?"<>|]/g, "_").slice(0, 80) || "文件.txt", text: body.replace(/\n$/, ""), size: new Blob([body]).size });
+    return "";
+  });
+  let draw = null;
+  text = text.replace(/\[画图[:：]\s*([^\]\n]+)\]/, (_, p) => { draw = p.trim(); return ""; }).replace(/\[画图[:：][^\]\n]*\]/g, "");
+  return { text, files, draw };
+}
+
+function imageModels() { return allModels.filter(m => (m.architecture?.output_modalities || []).includes("image")); }
+function pickImageModel() {
+  if (config.imageModel) return config.imageModel;
+  const list = imageModels();
+  const price = m => parseFloat(m.pricing?.prompt) || 0;
+  const gem = list.filter(m => /gemini/i.test(m.id));   // 优先 Gemini 的画图模型：又快又便宜
+  return (gem.length ? gem : list).sort((a, b) => (b.created || 0) - (a.created || 0) || price(a) - price(b))[0]?.id || "";
+}
+async function generateImage(prompt, g) {
+  const model = pickImageModel();
+  if (!model) throw new Error("没找到能画图的模型，可以去设置里手动填一个");
+  const info = modelInfo(model);
+  const textToo = (info?.architecture?.output_modalities || ["image", "text"]).includes("text");
+  const ctrl = new AbortController();
+  if (!controllers.has(g.id)) controllers.set(g.id, []);
+  controllers.get(g.id).push(ctrl);
+  const res = await fetch(API_URL, {
+    method: "POST", signal: ctrl.signal,
+    headers: { "Authorization": "Bearer " + config.apiKey, "Content-Type": "application/json", "X-Title": "Fuga" },
+    body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], modalities: textToo ? ["image", "text"] : ["image"] }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(friendlyError(data.error?.message, res.status));
+  const url = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  if (!url) throw new Error("画图模型没有返回图片");
+  return { url, cost: data.usage?.cost, model };
+}
+
+// 保存声部发来的文件 / 图片：桌面版弹出"另存为"，浏览器里直接下载
+async function saveAttachment(msgId, idx) {
+  const a = findMsg(msgId)?.attachments?.[idx];
+  if (!a) return;
+  const isImg = a.type === "image";
+  const name = isImg ? (a.name && /\.\w+$/.test(a.name) ? a.name : "复调-画作.png") : a.name;
+  const T = window.__TAURI__;
+  if (T?.dialog?.save && T?.fs) {
+    try {
+      const path = await T.dialog.save({ defaultPath: name });
+      if (!path) return;
+      if (isImg) {
+        const bytes = await (await fetch(a.dataUrl)).arrayBuffer();
+        await T.fs.writeFile(path, new Uint8Array(bytes));
+      } else await T.fs.writeTextFile(path, a.text);
+      return toast("已保存");
+    } catch (e) { console.warn(e); }   // 不行就退回到下载
+  }
+  try {
+    const blob = isImg ? await (await fetch(a.dataUrl)).blob() : new Blob([a.text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch { toast("保存失败，可以先点「复制」"); }
+}
+async function copyAttachment(msgId, idx) {
+  const a = findMsg(msgId)?.attachments?.[idx];
+  if (!a?.text) return;
+  try { await navigator.clipboard.writeText(a.text); } catch {
+    const ta = document.createElement("textarea"); ta.value = a.text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  toast("已复制文件内容");
+}
+function previewAttachment(msgId, idx) {
+  const a = findMsg(msgId)?.attachments?.[idx];
+  if (!a) return;
+  $("file-title").textContent = a.name;
+  $("file-body").textContent = a.text;
+  $("file-actions").innerHTML = `<button class="btn small" onclick="copyAttachment('${msgId}',${idx})">复制</button>
+    <button class="btn small primary" onclick="saveAttachment('${msgId}',${idx})">保存</button>`;
+  $("file-ov").classList.add("show");
+}
+// 舞台 / 乐谱里显示附件
+function attHtml(msg, big) {
+  if (!msg.attachments?.length) return "";
+  return `<div class="atts ${big ? "big" : ""}">${msg.attachments.map((a, i) => {
+    if (a.type === "image") return `<figure class="art">
+        <img src="${a.dataUrl}" alt="${esc(a.prompt || a.name || "图片")}" onclick="viewImage(this.src)">
+        ${msg.sender !== "user" ? `<figcaption>${a.prompt ? esc(a.prompt.slice(0, 60)) : ""}<button class="chip-btn" onclick="event.stopPropagation();saveAttachment('${msg.id}',${i})">保存图片</button></figcaption>` : ""}</figure>`;
+    if (a.type === "gen-file") return `<div class="gfile"><span class="gname">📄 ${esc(a.name)}</span><span class="muted small">${fmtSize(a.size)}</span>
+        <button class="chip-btn" onclick="event.stopPropagation();previewAttachment('${msg.id}',${i})">预览</button>
+        <button class="chip-btn" onclick="event.stopPropagation();copyAttachment('${msg.id}',${i})">复制</button>
+        <button class="chip-btn" onclick="event.stopPropagation();saveAttachment('${msg.id}',${i})">保存</button></div>`;
+    return `<span class="file-chip">📄 <span>${esc(a.name)}</span><span class="muted">${fmtSize(a.size)}</span></span>`;
+  }).join("")}</div>`;
+}
+
+/* =====================================================================
    发送 & AI 发言
    ===================================================================== */
 function systemPromptFor(member, g) {
@@ -1484,6 +1720,8 @@ function systemPromptFor(member, g) {
 - 不要说"作为AI"，不要客套，不要列 1.2.3.，不要总结，不要问"还有什么可以帮你"。
 - 想让某个群友接话时可以@他，比如"@${others[0] || u} 你怎么看"。别每次都@。
 - 群友发的图片和文件你能看到的话，就像朋友一样自然地聊它。
+- 如果${u}需要一份能保存下来的东西（文档、清单、简历、表格、代码），可以直接发文件，格式是单独起一行写 \`\`\`file:文件名.扩展名 ，换行写内容，最后一行写 \`\`\` 。只支持文字类文件（md、txt、csv、html、json、各种代码）。文件内容可以长，文件外面的话照样要短。${config.allowImages !== false && pickImageModel() ? `
+- 如果一张图比文字更能说明问题，或者${u}请你画图，可以单独写一行 [画图: 详细的画面描述]，系统会帮你画出来发到群里。一次最多一张，别为了画而画。` : ""}
 - 别人说过的不要重复。没什么想说的，就只回复 [PASS]（潜水）。但如果你被@了、被引用了，或者还没人回复${u}，就必须说点什么。
 - 别人的发言以「[名字]: 内容」出现。你直接说话，开头不要写自己的名字，也不要替别人说话。
 - 用${u}用的语言聊。`;
@@ -1511,16 +1749,22 @@ function buildMessagesFor(member, g, history) {
     const parts = [];
     const fresh = idx >= recent.length - IMAGE_HISTORY;
     for (const a of msg.attachments || []) {
-      if (a.type === "text") {
-        text += `\n\n[附件：${a.name}]\n\`\`\`\n${a.text}\n\`\`\``;
+      if (isSelf) {   // 自己发过的文件和图：只提一句，不重复塞内容
+        text += a.type === "gen-file" ? `\n[你发了文件：${a.name}]` : a.type === "image" ? `\n[你画了一张图：${a.prompt || ""}]` : "";
+        continue;
+      }
+      if (a.type === "text" || a.type === "gen-file") {
+        const body = a.text.length > 6000 ? a.text.slice(0, 6000) + "\n…（后面省略）" : a.text;
+        text += `\n\n[${a.type === "gen-file" ? "发了文件" : "附件"}：${a.name}]\n\`\`\`\n${body}\n\`\`\``;
       } else if (a.type === "image") {
         if (vision && fresh) parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
-        else text += `\n[发了一张图片${vision ? "（较早的图片，这里省略）" : "，但你看不到图片，可以直说"}]`;
+        else text += `\n[${a.prompt ? "画了一张图：" + a.prompt : "发了一张图片"}${vision ? "（较早的图片，这里省略）" : "，但你看不到图片，可以直说"}]`;
       } else if (a.type === "pdf") {
         if (fresh) parts.push({ type: "file", file: { filename: a.name, file_data: a.dataUrl } });
         else text += `\n[发过一个PDF：${a.name}（较早的文件，这里省略）]`;
       }
     }
+    if (isSelf && !text.trim()) text = "（发了附件）";
     const content = parts.length ? [{ type: "text", text }, ...parts] : text;
     const last = out[out.length - 1];
     if (last.role === role && role !== "system") {
@@ -1626,7 +1870,8 @@ async function runRound(g, targets, forceMode, forceAll) {
 async function replyFrom(g, member, history) {
   setTyping(g, member.id, true);
   try {
-    const { text, cost } = await askMember(member, g, history);
+    const { text: raw, cost } = await askMember(member, g, history);
+    const { text, files, draw } = extractMedia(raw);
     let parts = text.replace(/\[PASS\]/gi, "").split(/\n?[ \t]*\/\/\/[ \t]*\n?/).map(s => s.trim()).filter(Boolean);
     if (parts.length > MAX_BUBBLES) parts = [...parts.slice(0, MAX_BUBBLES - 1), parts.slice(MAX_BUBBLES - 1).join("\n")];
     const out = [];
@@ -1635,7 +1880,24 @@ async function replyFrom(g, member, history) {
         if (!busyGroups.has(g.id)) break;
         await sleep(Math.min(500 + parts[i].length * 35, 2500));
       }
-      out.push(addMessage(g, { sender: member.id, text: parts[i], cost: i === parts.length - 1 ? cost : undefined }));
+      out.push(addMessage(g, { sender: member.id, text: parts[i], cost: i === parts.length - 1 && !files.length ? cost : undefined }));
+    }
+    if (files.length && busyGroups.has(g.id)) {
+      await sleep(400);
+      out.push(addMessage(g, { sender: member.id, text: "", attachments: files, cost }));
+    }
+    if (draw && busyGroups.has(g.id)) {
+      if (config.allowImages === false) {
+        out.push(addMessage(g, { sender: member.id, text: `（想画一张图：${draw}。画图功能关着，可以在设置里打开）` }));
+      } else {
+        try {
+          const img = await generateImage(draw, g);
+          out.push(addMessage(g, { sender: member.id, text: "", cost: img.cost,
+            attachments: [{ type: "image", name: "复调-画作.png", dataUrl: img.url, prompt: draw, model: img.model }] }));
+        } catch (e) {
+          if (e.name !== "AbortError") out.push(addMessage(g, { sender: member.id, text: "画图失败：" + e.message, error: true }));
+        }
+      }
     }
     return out;
   } catch (e) {
@@ -1866,6 +2128,12 @@ function openSettings() {
   $("set-avatar").value = config.userAvatar;
   draftTheme = config.theme;
   paintThemeButtons();
+  $("set-sound").checked = config.sound !== false;
+  $("set-volume").value = config.volume ?? 0.35;
+  $("set-images").checked = config.allowImages !== false;
+  $("set-image-model").value = config.imageModel || "";
+  $("set-image-model").placeholder = "画图模型，留空自动挑选" + (pickImageModel() ? "（现在是 " + shortModel(pickImageModel()) + "）" : "");
+  $("image-model-options").innerHTML = imageModels().map(m => `<option value="${esc(m.id)}">${esc(m.name || m.id)}</option>`).join("");
   $("settings-ov").classList.add("show");
 }
 function closeSettings() { $("settings-ov").classList.remove("show"); applyTheme(); }
@@ -1874,9 +2142,19 @@ function saveSettings() {
   config.userName = $("set-username").value.trim() || "我";
   config.userAvatar = $("set-avatar").value.trim() || "🙂";
   config.theme = draftTheme;
+  config.sound = $("set-sound").checked;
+  config.volume = parseFloat($("set-volume").value);
+  config.allowImages = $("set-images").checked;
+  config.imageModel = $("set-image-model").value.trim();
   lsSave("aigc-config", config);
   closeSettings();
   renderMe(); renderHeader(); renderView();
+}
+function previewSound() {
+  const was = config.sound, vol = config.volume;
+  config.sound = true; config.volume = parseFloat($("set-volume").value);
+  [5, 7, 9, 12, 14].forEach((s, i) => playNote(s, { when: i * .16 }));
+  setTimeout(() => { config.sound = was; config.volume = vol; }, 50);
 }
 function toggleKeyVisible() { const k = $("set-key"); k.type = k.type === "password" ? "text" : "password"; }
 function paintThemeButtons() {
